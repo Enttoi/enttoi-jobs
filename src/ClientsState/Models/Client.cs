@@ -1,19 +1,33 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Azure.Documents;
+using Newtonsoft.Json;
 using System;
 
 namespace ClientsState.Models
 {
-    public class Client
+    public class Client : Document
     {
-        [JsonProperty(PropertyName = "id")]
-        public Guid ClientId { get; set; }
+        public bool IsOnline
+        {
+            get
+            {
+                return GetPropertyValue<bool>("IsOnline");
+            }
+            set
+            {
+                SetPropertyValue("IsOnline", value);
+            }
+        }
 
-        public string[] Tags { get; set; }
-
-        public bool IsOnline { get; set; }
-
-        public DateTime IsOnlineChanged { get; set; }
-
-        public Sensor[] Sensors { get; set; }
+        public DateTime IsOnlineChanged
+        {
+            get
+            {
+                return GetPropertyValue<DateTime>("IsOnlineChanged");
+            }
+            set
+            {
+                SetPropertyValue("IsOnlineChanged", value);
+            }
+        }
     }
 }

@@ -20,9 +20,10 @@ namespace ClientsState
         private static readonly TimeSpan INTERVAL_CHECK = TimeSpan.FromMinutes(1);
         private static readonly TimeSpan INTERVAL_WHEN_CLIENT_OFFLINE = TimeSpan.FromMinutes(1);
 
-        private const string COLLECTION_CLIENTS = "clients";
         private const int RETRY_COUNT = 3;
         private static readonly TimeSpan RETRY_INTERVAL = TimeSpan.FromMilliseconds(500);
+        
+        private static readonly Uri _collectionUri = new Uri($"dbs/{(getConfig("DOCUMENT_DB_NAME") ?? "development")}/colls/clients", UriKind.Relative);
         private static readonly SqlQuerySpec _query = new SqlQuerySpec("SELECT * FROM c WHERE c.isDisabled = false");
 
         private const string TABLE_CLIENTS_STATE = "ClientsState";
@@ -30,7 +31,12 @@ namespace ClientsState
         [NoAutomaticTrigger]
         public static async Task MonitorClientsState(TextWriter log)
         {
-            await log.WriteAsync("Started monitoring of clients state");
+            await log.WriteLineAsync("Started monitoring of clients state");
+
+            var documentClient = getDocumentClient(getConfig("DOCUMENT_DB_ENDPOINT"), getConfig("DOCUMENT_DB_ACCESS_KEY"));
+            var storageClient = getStorageClient(getConfig("STORAGE_CONNECTION_STRING") ?? "UseDevelopmentStorage=true");
+            
+            await log.WriteLineAsync($"Clients initialized => starting loop with interval {INTERVAL_CHECK}");
 
             while (true)
             {
@@ -39,12 +45,7 @@ namespace ClientsState
                 await log.WriteAsync($"Checking clients state");
                 try
                 {
-                    await checkClientsState(
-                        log,
-                        Environment.GetEnvironmentVariable("DOCUMENT_DB_ENDPOINT"),
-                        Environment.GetEnvironmentVariable("DOCUMENT_DB_ACCESS_KEY"),
-                        Environment.GetEnvironmentVariable("DOCUMENT_DB_NAME") ?? "development",
-                        Environment.GetEnvironmentVariable("STORAGE_CONNECTION_STRING") ?? "UseDevelopmentStorage=true");
+                    await checkClientsState(log, documentClient, storageClient);
                 }
                 catch (Exception ex)
                 {
@@ -56,12 +57,47 @@ namespace ClientsState
             }
         }
 
-        private static async Task checkClientsState(TextWriter log, string dbEndPoint, string dbAccessKey, string dbName, string storageConnection)
+        private static async Task checkClientsState(TextWriter log, IReliableReadWriteDocumentClient dbClient, CloudTableClient tableClient)
         {
-            var dbClient = new DocumentClient(new Uri(dbEndPoint), dbAccessKey)
-                .AsReliable(new FixedInterval(RETRY_COUNT, RETRY_INTERVAL));
-            var clientCollectionLink = new Uri($"dbs/{dbName}/colls/{COLLECTION_CLIENTS}", UriKind.Relative);
+            var tableRef = tableClient.GetTableReference(TABLE_CLIENTS_STATE);
+            var metaClients = dbClient.CreateDocumentQuery<Client>(_collectionUri, _query).ToList();
 
+            foreach (var metaClient in metaClients)
+            {
+                var tableRow = await tableRef.ExecuteAsync(
+                    TableOperation.Retrieve(metaClient.Id.ToString(), "LastPing"));
+
+                if (tableRow.HttpStatusCode != 200)
+                    log.WriteLine($"Error occurred while querying for state of {metaClient.Id}: [Status Code {tableRow.HttpStatusCode}]");
+                else
+                {
+                    var tableRowResult = (DynamicTableEntity)tableRow.Result;
+                    var lastPing = tableRowResult["TimeStamp"].DateTime.Value;
+                    if (metaClient.IsOnline && DateTime.UtcNow.Add(-INTERVAL_WHEN_CLIENT_OFFLINE) > lastPing)
+                        await log.WriteAsync($"Client {metaClient.Id} was ONLINE, but it's last ping occurred on {lastPing}, thus the state will be changed to OFFLINE.");
+                    else if (!metaClient.IsOnline && DateTime.UtcNow.Add(-INTERVAL_WHEN_CLIENT_OFFLINE) < lastPing)
+                        await log.WriteAsync($"Client {metaClient.Id} was OFFLINE, but it's last ping occurred on {lastPing}, thus the state will be changed to ONLINE.");
+                    else
+                        continue;
+
+                    metaClient.IsOnline = !metaClient.IsOnline;
+                    metaClient.IsOnlineChanged = DateTime.UtcNow;
+                    await dbClient.ReplaceDocumentAsync(metaClient);
+                    
+                    // TODO: send notification
+
+                }
+            }
+        }
+
+        private static IReliableReadWriteDocumentClient getDocumentClient(string dbEndPoint, string dbAccessKey)
+        {
+            return new DocumentClient(new Uri(dbEndPoint), dbAccessKey)
+                .AsReliable(new FixedInterval(RETRY_COUNT, RETRY_INTERVAL));
+        }
+
+        private static CloudTableClient getStorageClient(string storageConnection)
+        {
             var storageAccount = CloudStorageAccount.Parse(storageConnection);
             var tableClient = storageAccount.CreateCloudTableClient();
             tableClient.DefaultRequestOptions = new TableRequestOptions()
@@ -69,29 +105,10 @@ namespace ClientsState
                 RetryPolicy = new LinearRetry(RETRY_INTERVAL, RETRY_COUNT),
                 LocationMode = LocationMode.PrimaryThenSecondary
             };
-            var tableRef = tableClient.GetTableReference(TABLE_CLIENTS_STATE);
-            var metaClients = dbClient.CreateDocumentQuery<Client>(clientCollectionLink, _query).ToList();
 
-            foreach (var metaClient in metaClients)
-            {
-                var tableRow = await tableRef.ExecuteAsync(
-                    TableOperation.Retrieve(metaClient.ClientId.ToString(), "LastPing"));
-
-                if (tableRow.HttpStatusCode != 200)
-                    log.WriteLine($"Error occurred while querying for state of {metaClient.ClientId}: [Status Code {tableRow.HttpStatusCode}]");
-                else
-                {
-                    var tableRowResult = (DynamicTableEntity)tableRow.Result;
-                    if(DateTime.UtcNow.Add(-INTERVAL_WHEN_CLIENT_OFFLINE) < tableRowResult["TimeStamp"].DateTime.Value)
-                    {
-                        // TODO: mark client is offline (only if it was online before)
-                    }
-                    else
-                    {
-                        // TODO: make the opposite of above
-                    }
-                }
-            }
+            return tableClient;
         }
+
+        private static string getConfig(string key) => Environment.GetEnvironmentVariable(key);
     }
 }
