@@ -12,13 +12,16 @@ using ClientsState.Models;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
 using Microsoft.WindowsAzure.Storage.RetryPolicies;
+using Microsoft.ServiceBus.Messaging;
+using Microsoft.ServiceBus;
+using Newtonsoft.Json;
 
 namespace ClientsState
 {
     public class Functions
     {
         private static readonly TimeSpan INTERVAL_CHECK = TimeSpan.FromMinutes(1);
-        private static readonly TimeSpan INTERVAL_WHEN_CLIENT_OFFLINE = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan INTERVAL_SWITCH_STATE = TimeSpan.FromMinutes(1);
 
         private const int RETRY_COUNT = 3;
         private static readonly TimeSpan RETRY_INTERVAL = TimeSpan.FromMilliseconds(500);
@@ -28,6 +31,8 @@ namespace ClientsState
 
         private const string TABLE_CLIENTS_STATE = "ClientsState";
 
+        private const string TOPIC_SENSORS_STATE = "sensor-state-changed";
+
         [NoAutomaticTrigger]
         public static async Task MonitorClientsState(TextWriter log)
         {
@@ -35,7 +40,8 @@ namespace ClientsState
 
             var documentClient = getDocumentClient(getConfig("DOCUMENT_DB_ENDPOINT"), getConfig("DOCUMENT_DB_ACCESS_KEY"));
             var storageClient = getStorageClient(getConfig("STORAGE_CONNECTION_STRING") ?? "UseDevelopmentStorage=true");
-            
+            var topicsClient = getTopicClient(getConfig("SERVICEBUS_CONNECTION_STRING"));
+
             await log.WriteLineAsync($"Clients initialized => starting loop with interval {INTERVAL_CHECK}");
 
             while (true)
@@ -45,7 +51,7 @@ namespace ClientsState
                 await log.WriteAsync($"Checking clients state");
                 try
                 {
-                    await checkClientsState(log, documentClient, storageClient);
+                    await checkClientsState(log, documentClient, storageClient, topicsClient);
                 }
                 catch (Exception ex)
                 {
@@ -57,7 +63,7 @@ namespace ClientsState
             }
         }
 
-        private static async Task checkClientsState(TextWriter log, IReliableReadWriteDocumentClient dbClient, CloudTableClient tableClient)
+        private static async Task checkClientsState(TextWriter log, IReliableReadWriteDocumentClient dbClient, CloudTableClient tableClient, TopicClient topicClient)
         {
             var tableRef = tableClient.GetTableReference(TABLE_CLIENTS_STATE);
             var metaClients = dbClient.CreateDocumentQuery<Client>(_collectionUri, _query).ToList();
@@ -73,19 +79,30 @@ namespace ClientsState
                 {
                     var tableRowResult = (DynamicTableEntity)tableRow.Result;
                     var lastPing = tableRowResult["TimeStamp"].DateTime.Value;
-                    if (metaClient.IsOnline && DateTime.UtcNow.Add(-INTERVAL_WHEN_CLIENT_OFFLINE) > lastPing)
+                    var now = DateTime.UtcNow;
+
+                    if (metaClient.IsOnline && now.Add(-INTERVAL_SWITCH_STATE) > lastPing)
                         await log.WriteAsync($"Client {metaClient.Id} was ONLINE, but it's last ping occurred on {lastPing}, thus the state will be changed to OFFLINE.");
-                    else if (!metaClient.IsOnline && DateTime.UtcNow.Add(-INTERVAL_WHEN_CLIENT_OFFLINE) < lastPing)
+                    else if (!metaClient.IsOnline && now.Add(-INTERVAL_SWITCH_STATE) < lastPing)
                         await log.WriteAsync($"Client {metaClient.Id} was OFFLINE, but it's last ping occurred on {lastPing}, thus the state will be changed to ONLINE.");
                     else
                         continue;
 
-                    metaClient.IsOnline = !metaClient.IsOnline;
-                    metaClient.IsOnlineChanged = DateTime.UtcNow;
-                    await dbClient.ReplaceDocumentAsync(metaClient);
-                    
-                    // TODO: send notification
+                    var previousStateDuration = now - metaClient.IsOnlineChanged;
 
+                    metaClient.IsOnline = !metaClient.IsOnline;
+                    metaClient.IsOnlineChanged = now;
+
+                    var notification = JsonConvert.SerializeObject(new {
+                        clientId = metaClient.Id,
+                        newState = metaClient.IsOnline,
+                        previousStateDurationMs = previousStateDuration.TotalMilliseconds,
+                        timestamp = now
+                    });
+
+                    await Task.WhenAll(
+                        dbClient.ReplaceDocumentAsync(metaClient),
+                        topicClient.SendAsync(new BrokeredMessage(notification)));
                 }
             }
         }
@@ -107,6 +124,13 @@ namespace ClientsState
             };
 
             return tableClient;
+        }
+
+        private static TopicClient getTopicClient(string sertviceBusConnection)
+        {
+            var client = TopicClient.CreateFromConnectionString(sertviceBusConnection, TOPIC_SENSORS_STATE);
+            client.RetryPolicy = new RetryExponential(RETRY_INTERVAL, RETRY_INTERVAL, RETRY_COUNT);
+            return client;
         }
 
         private static string getConfig(string key) => Environment.GetEnvironmentVariable(key);
