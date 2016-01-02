@@ -25,7 +25,7 @@ namespace ClientsState
 
         private const int RETRY_COUNT = 3;
         private static readonly TimeSpan RETRY_INTERVAL = TimeSpan.FromMilliseconds(500);
-        
+
         private static readonly Uri _collectionUri = new Uri($"dbs/{(Program.Conf("DOCUMENT_DB_NAME") ?? "development")}/colls/clients", UriKind.Relative);
         private static readonly SqlQuerySpec _query = new SqlQuerySpec("SELECT * FROM c WHERE c.isDisabled = false");
 
@@ -34,36 +34,36 @@ namespace ClientsState
         private const string TOPIC_CLIENTS_STATE = "client-state-changed";
 
         [NoAutomaticTrigger]
-        public static async Task MonitorClientsState(TextWriter log)
+        public static async Task MonitorClientsState()
         {
-            await log.WriteLineAsync("Started monitoring of clients state");
+            l("Started monitoring of clients state");
 
             var documentClient = getDocumentClient(Program.Conf("DOCUMENT_DB_ENDPOINT"), Program.Conf("DOCUMENT_DB_ACCESS_KEY"));
             var storageClient = getStorageClient(Program.Conf("STORAGE_CONNECTION_STRING") ?? "UseDevelopmentStorage=true");
             var topicsClient = getTopicClient(Program.Conf("SERVICEBUS_CONNECTION_STRING"));
 
-            await log.WriteLineAsync($"Clients initialized => starting loop with interval {INTERVAL_CHECK}");
+            l($"Clients initialized => starting loop with interval {INTERVAL_CHECK}");
 
             while (true)
             {
                 var watch = new Stopwatch();
                 watch.Start();
-                await log.WriteAsync($"Checking clients state");
+                l($"Checking clients state");
                 try
                 {
-                    await checkClientsState(log, documentClient, storageClient, topicsClient);
+                    await checkClientsState(documentClient, storageClient, topicsClient);
                 }
                 catch (Exception ex)
                 {
-                    log.WriteLine($"Error occurred in checking clients state: {ex.Message}");
+                    l($"Error occurred in checking clients state: {ex.Message}");
                 }
-                await log.WriteAsync($"Finished checking clients state after {watch.Elapsed}");
+                l($"Finished checking clients state after {watch.Elapsed}");
 
                 await Task.Delay(INTERVAL_CHECK);
             }
         }
 
-        private static async Task checkClientsState(TextWriter log, IReliableReadWriteDocumentClient dbClient, CloudTableClient tableClient, TopicClient topicClient)
+        private static async Task checkClientsState(IReliableReadWriteDocumentClient dbClient, CloudTableClient tableClient, TopicClient topicClient)
         {
             var tableRef = tableClient.GetTableReference(TABLE_CLIENTS_STATE);
             var metaClients = dbClient.CreateDocumentQuery<Client>(_collectionUri, _query).ToList();
@@ -74,7 +74,7 @@ namespace ClientsState
                     TableOperation.Retrieve(metaClient.Id.ToString(), "LastPing"));
 
                 if (tableRow.HttpStatusCode != 200)
-                    log.WriteLine($"Error occurred while querying for state of {metaClient.Id}: [Status Code {tableRow.HttpStatusCode}]");
+                    l($"Error occurred while querying for state of {metaClient.Id}: [Status Code {tableRow.HttpStatusCode}]");
                 else
                 {
                     var tableRowResult = (DynamicTableEntity)tableRow.Result;
@@ -82,9 +82,9 @@ namespace ClientsState
                     var now = DateTime.UtcNow;
 
                     if (metaClient.IsOnline && now.Add(-INTERVAL_SWITCH_STATE) > lastPing)
-                        await log.WriteAsync($"Client {metaClient.Id} was ONLINE, but it's last ping occurred on {lastPing}, thus the state will be changed to OFFLINE.");
+                        l($"Client {metaClient.Id} was ONLINE, but it's last ping occurred on {lastPing}, thus the state will be changed to OFFLINE.");
                     else if (!metaClient.IsOnline && now.Add(-INTERVAL_SWITCH_STATE) < lastPing)
-                        await log.WriteAsync($"Client {metaClient.Id} was OFFLINE, but it's last ping occurred on {lastPing}, thus the state will be changed to ONLINE.");
+                        l($"Client {metaClient.Id} was OFFLINE, but it's last ping occurred on {lastPing}, thus the state will be changed to ONLINE.");
                     else
                         continue;
 
@@ -93,7 +93,8 @@ namespace ClientsState
                     metaClient.IsOnline = !metaClient.IsOnline;
                     metaClient.IsOnlineChanged = now;
 
-                    var notification = JsonConvert.SerializeObject(new {
+                    var notification = JsonConvert.SerializeObject(new
+                    {
                         clientId = metaClient.Id,
                         newState = metaClient.IsOnline,
                         previousStateDurationMs = previousStateDuration.TotalMilliseconds,
@@ -131,6 +132,16 @@ namespace ClientsState
             var client = TopicClient.CreateFromConnectionString(sertviceBusConnection, TOPIC_CLIENTS_STATE);
             client.RetryPolicy = new RetryExponential(RETRY_INTERVAL, RETRY_INTERVAL + new TimeSpan(RETRY_INTERVAL.Ticks / 2), RETRY_COUNT);
             return client;
-        }        
+        }
+
+        private static void l(string message)
+        {
+            l(message, null);
+        }
+
+        private static void l(string message, params object[] arg)
+        {
+            Console.WriteLine(message, arg);            
+        }
     }
 }
