@@ -15,6 +15,7 @@ using Microsoft.WindowsAzure.Storage.RetryPolicies;
 using Microsoft.ServiceBus.Messaging;
 using Microsoft.ServiceBus;
 using Newtonsoft.Json;
+using System.Text;
 
 namespace ClientsState
 {
@@ -101,9 +102,12 @@ namespace ClientsState
                         timestamp = now
                     });
 
-                    await Task.WhenAll(
-                        dbClient.ReplaceDocumentAsync(metaClient),
-                        topicClient.SendAsync(new BrokeredMessage(notification)));
+                    using (var message = new BrokeredMessage(new MemoryStream(Encoding.UTF8.GetBytes(notification)), true))
+                    {
+                        await Task.WhenAll(
+                            dbClient.ReplaceDocumentAsync(metaClient),
+                            topicClient.SendAsync(message));
+                    }
                 }
             }
         }
@@ -141,7 +145,7 @@ namespace ClientsState
 
         private static void l(string message, params object[] arg)
         {
-            Console.WriteLine(message, arg);            
+            Console.WriteLine(message, arg);
         }
     }
 }
