@@ -10,11 +10,11 @@ namespace ClientsState.Models
         {
             get
             {
-                return GetPropertyValue<bool>("IsOnline");
+                return GetPropertyValue<bool>("isOnline");
             }
             set
             {
-                SetPropertyValue("IsOnline", value);
+                SetPropertyValue("isOnline", value);
             }
         }
 
@@ -22,11 +22,11 @@ namespace ClientsState.Models
         {
             get
             {
-                return GetPropertyValue<DateTime>("IsOnlineChanged");
+                return GetPropertyValue<DateTime>("isOnlineChanged");
             }
             set
             {
-                SetPropertyValue("IsOnlineChanged", value);
+                SetPropertyValue("isOnlineChanged", value);
             }
         }
     }

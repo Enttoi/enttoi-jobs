@@ -21,26 +21,26 @@ namespace ClientsState
     public class Functions
     {
         private static readonly TimeSpan INTERVAL_CHECK = TimeSpan.FromMinutes(1);
-        private static readonly TimeSpan INTERVAL_SWITCH_STATE = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan INTERVAL_SWITCH_STATE = TimeSpan.FromMinutes(2);
 
         private const int RETRY_COUNT = 3;
         private static readonly TimeSpan RETRY_INTERVAL = TimeSpan.FromMilliseconds(500);
         
-        private static readonly Uri _collectionUri = new Uri($"dbs/{(getConfig("DOCUMENT_DB_NAME") ?? "development")}/colls/clients", UriKind.Relative);
+        private static readonly Uri _collectionUri = new Uri($"dbs/{(Program.Conf("DOCUMENT_DB_NAME") ?? "development")}/colls/clients", UriKind.Relative);
         private static readonly SqlQuerySpec _query = new SqlQuerySpec("SELECT * FROM c WHERE c.isDisabled = false");
 
         private const string TABLE_CLIENTS_STATE = "ClientsState";
 
-        private const string TOPIC_SENSORS_STATE = "sensor-state-changed";
+        private const string TOPIC_CLIENTS_STATE = "client-state-changed";
 
         [NoAutomaticTrigger]
         public static async Task MonitorClientsState(TextWriter log)
         {
             await log.WriteLineAsync("Started monitoring of clients state");
 
-            var documentClient = getDocumentClient(getConfig("DOCUMENT_DB_ENDPOINT"), getConfig("DOCUMENT_DB_ACCESS_KEY"));
-            var storageClient = getStorageClient(getConfig("STORAGE_CONNECTION_STRING") ?? "UseDevelopmentStorage=true");
-            var topicsClient = getTopicClient(getConfig("SERVICEBUS_CONNECTION_STRING"));
+            var documentClient = getDocumentClient(Program.Conf("DOCUMENT_DB_ENDPOINT"), Program.Conf("DOCUMENT_DB_ACCESS_KEY"));
+            var storageClient = getStorageClient(Program.Conf("STORAGE_CONNECTION_STRING") ?? "UseDevelopmentStorage=true");
+            var topicsClient = getTopicClient(Program.Conf("SERVICEBUS_CONNECTION_STRING"));
 
             await log.WriteLineAsync($"Clients initialized => starting loop with interval {INTERVAL_CHECK}");
 
@@ -128,11 +128,9 @@ namespace ClientsState
 
         private static TopicClient getTopicClient(string sertviceBusConnection)
         {
-            var client = TopicClient.CreateFromConnectionString(sertviceBusConnection, TOPIC_SENSORS_STATE);
-            client.RetryPolicy = new RetryExponential(RETRY_INTERVAL, RETRY_INTERVAL, RETRY_COUNT);
+            var client = TopicClient.CreateFromConnectionString(sertviceBusConnection, TOPIC_CLIENTS_STATE);
+            client.RetryPolicy = new RetryExponential(RETRY_INTERVAL, RETRY_INTERVAL + new TimeSpan(RETRY_INTERVAL.Ticks / 2), RETRY_COUNT);
             return client;
-        }
-
-        private static string getConfig(string key) => Environment.GetEnvironmentVariable(key);
+        }        
     }
 }
