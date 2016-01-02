@@ -20,7 +20,7 @@ namespace ClientsState
 {
     public class Functions
     {
-        private static readonly TimeSpan INTERVAL_CHECK = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan INTERVAL_CHECK = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan INTERVAL_SWITCH_STATE = TimeSpan.FromMinutes(2);
 
         private const int RETRY_COUNT = 3;
