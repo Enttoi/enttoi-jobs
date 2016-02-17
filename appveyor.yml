@@ -10,12 +10,12 @@ build:
   parallel: true
   verbosity: minimal
 test: off
+artifacts:
+- path: src\ClientsState\bin\Release\ClientsState.zip
+  name: clientstate-deploy-package
+  type: WebDeployPackage
 deploy:
 - provider: Environment
   name: EnttoiJobs
   on:
     branch: master
-artifacts:
-- path: ClientsState\bin\ClientsState.zip
-  name: clientstate-deploy-package
-  type: WebDeployPackage
