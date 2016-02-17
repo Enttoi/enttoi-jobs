@@ -11,9 +11,9 @@ build:
   verbosity: minimal
 test: off
 artifacts:
-- path: src\ClientsState\bin\Release\ClientsState.zip
+- path: src\ClientsState\bin\Release\**\*.*
   name: clientstate-deploy-package
-  type: WebDeployPackage
+  type: zip
 deploy:
 - provider: Environment
   name: EnttoiJobs

@@ -163,7 +163,7 @@ namespace ClientsState
             {
                 Console.Out.WriteLine(message);
                 if (scm_logger != null)
-                    scm_logger.WriteLine("s\t" + message);
+                    scm_logger.WriteLine(message);
             }
             else {
                 Console.Out.WriteLine(message, arg);
