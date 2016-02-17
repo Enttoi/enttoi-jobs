@@ -39,9 +39,13 @@ namespace ClientsState
 
         private const string TOPIC_CLIENTS_STATE = "client-state-changed";
 
+        private static TextWriter scm_logger;
+
         [NoAutomaticTrigger]
-        public static async Task MonitorClientsState()
+        public static async Task MonitorClientsState(TextWriter log)
         {
+            scm_logger = log;
+
             l("Started monitoring of clients state");
 
             var documentClient = getDocumentClient(Program.Conf("DOCUMENT_DB_ENDPOINT"), Program.Conf("DOCUMENT_DB_ACCESS_KEY"));
@@ -155,7 +159,17 @@ namespace ClientsState
 
         private static void l(string message, params object[] arg)
         {
-            Console.Out.WriteLine(message, arg);
+            if (arg == null)
+            {
+                Console.Out.WriteLine(message);
+                if (scm_logger != null)
+                    scm_logger.WriteLine("s\t" + message);
+            }
+            else {
+                Console.Out.WriteLine(message, arg);
+                if (scm_logger != null)
+                    scm_logger.WriteLine(message);
+            }
         }
     }
 }
