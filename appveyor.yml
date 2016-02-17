@@ -10,3 +10,8 @@ build:
   parallel: true
   verbosity: minimal
 test: off
+deploy:
+- provider: Environment
+  name: EnttoiJobs
+  on:
+    branch: master
