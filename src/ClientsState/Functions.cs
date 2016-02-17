@@ -155,7 +155,7 @@ namespace ClientsState
 
         private static void l(string message, params object[] arg)
         {
-            Console.WriteLine(message, arg);
+            Console.Out.WriteLine(message, arg);
         }
     }
 }
