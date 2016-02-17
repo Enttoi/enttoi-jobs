@@ -16,13 +16,18 @@ using Microsoft.ServiceBus.Messaging;
 using Microsoft.ServiceBus;
 using Newtonsoft.Json;
 using System.Text;
+using System.Runtime.Caching;
+using System.Collections.Generic;
 
 namespace ClientsState
 {
     public class Functions
     {
-        private static readonly TimeSpan INTERVAL_CHECK = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan INTERVAL_SWITCH_STATE = TimeSpan.FromMinutes(2);
+        private const string CACHE_KEY_META_CLIENTS = "__meta_clients";
+        private static readonly TimeSpan CACHE_TTL_META_CLIENTS = TimeSpan.FromMinutes(1);
+
+        private static readonly TimeSpan INTERVAL_CHECK = TimeSpan.FromSeconds(1);
+        private static readonly TimeSpan INTERVAL_SWITCH_STATE = TimeSpan.FromMinutes(1);
 
         private const int RETRY_COUNT = 3;
         private static readonly TimeSpan RETRY_INTERVAL = TimeSpan.FromMilliseconds(500);
@@ -67,7 +72,12 @@ namespace ClientsState
         private static async Task checkClientsState(IReliableReadWriteDocumentClient dbClient, CloudTableClient tableClient, TopicClient topicClient)
         {
             var tableRef = tableClient.GetTableReference(TABLE_CLIENTS_STATE);
-            var metaClients = dbClient.CreateDocumentQuery<Client>(_collectionUri, _query).ToList();
+            var metaClients = MemoryCache.Default.Get(CACHE_KEY_META_CLIENTS) as List<Client>;
+            if (metaClients == null)
+            {
+                metaClients = dbClient.CreateDocumentQuery<Client>(_collectionUri, _query).ToList();
+                MemoryCache.Default.Add(CACHE_KEY_META_CLIENTS, metaClients, DateTimeOffset.UtcNow.Add(CACHE_TTL_META_CLIENTS));
+            }
 
             foreach (var metaClient in metaClients)
             {
