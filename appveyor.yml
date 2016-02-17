@@ -15,3 +15,7 @@ deploy:
   name: EnttoiJobs
   on:
     branch: master
+artifacts:
+- path: ClientsState\bin\ClientsState.zip
+  name: clientstate-deploy-package
+  type: WebDeployPackage
