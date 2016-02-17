@@ -1,0 +1,22 @@
+version: 0.0.{build}
+configuration: Release
+install:
+- cd src
+- nuget restore
+- cd..
+cache: packages -> **\packages.config
+build:
+  project: src\EnttoiJobs.sln
+  #publish_wap: true
+  parallel: true
+  verbosity: minimal
+test: off
+#artifacts:
+#- path: WebHost\bin\WebHost.zip
+#  name: web-deploy-package
+#  type: WebDeployPackage
+#deploy:
+#- provider: Environment
+#  name: EnttoiJobs
+#  on:
+#    branch: master

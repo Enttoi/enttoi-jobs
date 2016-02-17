@@ -1,6 +1,6 @@
 # Enttoi scheduled and continuous jobs
 
-*This repository is part of [Enttoi](http://enttoi.github.io/) project.*
+[![Build status](https://ci.appveyor.com/api/projects/status/mi0xgwxrpo7kburj/branch/master?svg=true)](https://ci.appveyor.com/project/jenyayel/enttoi-jobs/branch/master)
 
 The set of jobs that executed either on scheduled basis or in always-running mode. They are implemented as [Azure Web Jobs](https://azure.microsoft.com/en-us/documentation/articles/websites-webjobs-resources/).
 
