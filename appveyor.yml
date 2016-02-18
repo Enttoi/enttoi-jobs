@@ -9,12 +9,10 @@ build:
   project: src\EnttoiJobs.sln
   parallel: true
   verbosity: minimal
-before_package:
-- ps: msbuild src\ClientsState\ClientsState.csproj /t:Package /p:PackageLocation=clients-state-package.zip /p:PackageAsSingleFile=True
 test: off
 artifacts:
-- path: src/ClientsState/clients-state-package.zip
-  name: clients-state-package
+- path: src\ClientsState\bin\Release
+  name: ClientsState
 deploy:
 - provider: Environment
   name: EnttoiJobs
