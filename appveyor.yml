@@ -1,4 +1,4 @@
-version: 0.0.{build}
+version: 0.1.{build}
 configuration: Release
 install:
 - cd src
@@ -12,10 +12,12 @@ build:
 test: off
 artifacts:
 - path: src\ClientsState\bin\Release\**\*.*
-  name: clientstate-deploy-package
+  name: clients-state-package
   type: zip
 deploy:
 - provider: Environment
   name: EnttoiJobs
   on:
     branch: master
+on_finish:
+- ps: "Write-Host $artifacts.keys\nforeach($artifactName in $artifacts.keys) \n{ \n$art = $artifacts[$artifactName]\nWrite-Host $art.type \nWrite-Host $art.path\nWrite-Host $art.url \nWrite-Host \n}"
