@@ -9,15 +9,14 @@ build:
   project: src\EnttoiJobs.sln
   parallel: true
   verbosity: minimal
+before_package:
+- ps: msbuild src\ClientsState\ClientsState.csproj /t:Package /p:PackageLocation=clients-state-package.zip /p:PackageAsSingleFile=True
 test: off
 artifacts:
-- path: src\ClientsState\bin\Release\**\*.*
+- path: src/ClientsState/clients-state-package.zip
   name: clients-state-package
-  type: zip
 deploy:
 - provider: Environment
   name: EnttoiJobs
   on:
     branch: master
-on_finish:
-- ps: "Write-Host $artifacts.keys\nforeach($artifactName in $artifacts.keys) \n{ \n$art = $artifacts[$artifactName]\nWrite-Host $art.type \nWrite-Host $art.path\nWrite-Host $art.url \nWrite-Host \n}"
