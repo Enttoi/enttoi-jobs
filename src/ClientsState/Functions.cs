@@ -58,7 +58,6 @@ namespace ClientsState
             {
                 var watch = new Stopwatch();
                 watch.Start();
-                l($"Checking clients state");
                 try
                 {
                     await checkClientsState(documentClient, storageClient, topicsClient);
@@ -67,7 +66,7 @@ namespace ClientsState
                 {
                     l($"Error occurred in checking clients state: {ex.Message}");
                 }
-                l($"Finished checking clients state after {watch.Elapsed}");
+                l($"Finished checking clients within {watch.ElapsedMilliseconds}ms");
 
                 await Task.Delay(INTERVAL_CHECK);
             }
@@ -77,6 +76,7 @@ namespace ClientsState
         {
             var tableRef = tableClient.GetTableReference(TABLE_CLIENTS_STATE);
             var metaClients = MemoryCache.Default.Get(CACHE_KEY_META_CLIENTS) as List<Client>;
+
             if (metaClients == null)
             {
                 metaClients = dbClient.CreateDocumentQuery<Client>(_collectionUri, _query).ToList();
