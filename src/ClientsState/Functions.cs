@@ -159,16 +159,17 @@ namespace ClientsState
 
         private static void l(string message, params object[] arg)
         {
+            var formatedMessage = $"[{DateTime.UtcNow.ToShortTimeString()}]\t{message}";
             if (arg == null)
             {
-                Console.Out.WriteLine(message);
+                Console.Out.WriteLine(formatedMessage);
                 if (scm_logger != null)
-                    scm_logger.WriteLine(message);
+                    scm_logger.WriteLine(formatedMessage);
             }
             else {
-                Console.Out.WriteLine(message, arg);
+                Console.Out.WriteLine(formatedMessage, arg);
                 if (scm_logger != null)
-                    scm_logger.WriteLine(message);
+                    scm_logger.WriteLine(formatedMessage, arg);
             }
         }
     }
