@@ -1,23 +1,24 @@
-﻿using System;
+﻿using ClientsState.Models;
+using Microsoft.Azure.Documents;
+using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Documents.Client.TransientFaultHandling;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Practices.EnterpriseLibrary.TransientFaultHandling;
+using Microsoft.ServiceBus;
+using Microsoft.ServiceBus.Messaging;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.RetryPolicies;
+using Microsoft.WindowsAzure.Storage.Table;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
-using System.Diagnostics;
-using Microsoft.Azure.Documents.Client.TransientFaultHandling;
-using Microsoft.Azure.Documents.Client;
-using Microsoft.Practices.EnterpriseLibrary.TransientFaultHandling;
-using Microsoft.Azure.Documents;
-using ClientsState.Models;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
-using Microsoft.WindowsAzure.Storage.RetryPolicies;
-using Microsoft.ServiceBus.Messaging;
-using Microsoft.ServiceBus;
-using Newtonsoft.Json;
-using System.Text;
 using System.Runtime.Caching;
-using System.Collections.Generic;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ClientsState
 {
@@ -39,13 +40,9 @@ namespace ClientsState
 
         private const string TOPIC_CLIENTS_STATE = "client-state-changed";
 
-        private static TextWriter scm_logger;
-
         [NoAutomaticTrigger]
-        public static async Task MonitorClientsState(TextWriter log)
+        public static async Task MonitorClientsState(CancellationToken token)
         {
-            scm_logger = log;
-
             l("Started monitoring of clients state");
 
             var documentClient = getDocumentClient(Program.Conf("DOCUMENT_DB_ENDPOINT"), Program.Conf("DOCUMENT_DB_ACCESS_KEY"));
@@ -53,8 +50,8 @@ namespace ClientsState
             var topicsClient = getTopicClient(Program.Conf("SERVICEBUS_CONNECTION_STRING"));
 
             l($"Clients initialized => starting loop with interval {INTERVAL_CHECK}");
-
-            while (true)
+            
+            while (!token.IsCancellationRequested)
             {
                 var watch = new Stopwatch();
                 watch.Start();
@@ -71,8 +68,10 @@ namespace ClientsState
                 if (updatesPerformed)
                     l($"Performed update/s within {watch.ElapsedMilliseconds}ms");
 
-                await Task.Delay(INTERVAL_CHECK);
+                await Task.Delay(INTERVAL_CHECK, token);
             }
+
+            l($"Stopped monitoring of clients state");
         }
 
         private static async Task<bool> checkClientsState(IReliableReadWriteDocumentClient dbClient, CloudTableClient tableClient, TopicClient topicClient)
@@ -130,7 +129,7 @@ namespace ClientsState
                     }
                     catch (Exception ex)
                     {
-                        l($"Failed to update state and send notification {ex}");
+                        e($"Failed to update state and send notification {ex}");
                     }
                 }
             }
@@ -180,22 +179,12 @@ namespace ClientsState
 
         private static void l(string message)
         {
-            l(message, null);
+            Console.Out.WriteLine(message);
         }
 
-        private static void l(string message, params object[] arg)
+        private static void e(string message)
         {
-            if (arg == null)
-            {
-                Console.Out.WriteLine(message);
-                if (scm_logger != null)
-                    scm_logger.WriteLine(message);
-            }
-            else {
-                Console.Out.WriteLine(message, arg);
-                if (scm_logger != null)
-                    scm_logger.WriteLine(message, arg);
-            }
+            Console.Error.WriteLine(message);
         }
     }
 }
