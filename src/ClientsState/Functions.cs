@@ -33,7 +33,7 @@ namespace ClientsState
         private static readonly TimeSpan RETRY_INTERVAL = TimeSpan.FromMilliseconds(500);
 
         private static readonly Uri _collectionUri = new Uri($"dbs/{(Program.Conf("DOCUMENT_DB_NAME") ?? "development")}/colls/clients", UriKind.Relative);
-        private static readonly SqlQuerySpec _query = new SqlQuerySpec("SELECT * FROM c WHERE c.isDisabled = false");
+        private static readonly SqlQuerySpec _queryAllClients = new SqlQuerySpec("SELECT * FROM c WHERE c.isDisabled = false");
 
         private const string TABLE_CLIENTS_STATE = "ClientsState";
 
@@ -58,30 +58,36 @@ namespace ClientsState
             {
                 var watch = new Stopwatch();
                 watch.Start();
+                var updatesPerformed = false;
                 try
                 {
-                    await checkClientsState(documentClient, storageClient, topicsClient);
+                    updatesPerformed = await checkClientsState(documentClient, storageClient, topicsClient);
                 }
                 catch (Exception ex)
                 {
                     l($"Error occurred in checking clients state: {ex.Message}");
                 }
-                l($"Finished checking clients within {watch.ElapsedMilliseconds}ms");
+
+                if (updatesPerformed)
+                    l($"Performed update/s within {watch.ElapsedMilliseconds}ms");
 
                 await Task.Delay(INTERVAL_CHECK);
             }
         }
 
-        private static async Task checkClientsState(IReliableReadWriteDocumentClient dbClient, CloudTableClient tableClient, TopicClient topicClient)
+        private static async Task<bool> checkClientsState(IReliableReadWriteDocumentClient dbClient, CloudTableClient tableClient, TopicClient topicClient)
         {
             var tableRef = tableClient.GetTableReference(TABLE_CLIENTS_STATE);
             var metaClients = MemoryCache.Default.Get(CACHE_KEY_META_CLIENTS) as List<Client>;
 
             if (metaClients == null)
             {
-                metaClients = dbClient.CreateDocumentQuery<Client>(_collectionUri, _query).ToList();
+                metaClients = dbClient.CreateDocumentQuery<Client>(_collectionUri, _queryAllClients).ToList();
                 MemoryCache.Default.Add(CACHE_KEY_META_CLIENTS, metaClients, DateTimeOffset.UtcNow.Add(CACHE_TTL_META_CLIENTS));
+                l($"{metaClients.Count} client loaded to cache");
             }
+
+            bool updatesPerformed = false; //signals to invalidate cache
 
             foreach (var metaClient in metaClients)
             {
@@ -96,13 +102,10 @@ namespace ClientsState
                     var lastPing = tableRowResult["TimeStamp"].DateTime.Value;
                     var now = DateTime.UtcNow;
 
-                    if (metaClient.IsOnline && now.Add(-INTERVAL_SWITCH_STATE) > lastPing)
-                        l($"Client {metaClient.Id} was ONLINE, but it's last ping occurred on {lastPing}, thus the state will be changed to OFFLINE.");
-                    else if (!metaClient.IsOnline && now.Add(-INTERVAL_SWITCH_STATE) < lastPing)
-                        l($"Client {metaClient.Id} was OFFLINE, but it's last ping occurred on {lastPing}, thus the state will be changed to ONLINE.");
-                    else
+                    if (!isStateChanged(metaClient, lastPing, now))
                         continue;
 
+                    updatesPerformed = true;
                     var previousStateDuration = now - metaClient.IsOnlineChanged;
 
                     metaClient.IsOnline = !metaClient.IsOnline;
@@ -116,14 +119,26 @@ namespace ClientsState
                         timestamp = now
                     });
 
-                    using (var message = new BrokeredMessage(new MemoryStream(Encoding.UTF8.GetBytes(notification)), true))
+                    try
                     {
-                        await Task.WhenAll(
-                            dbClient.ReplaceDocumentAsync(metaClient),
-                            topicClient.SendAsync(message));
+                        using (var message = new BrokeredMessage(new MemoryStream(Encoding.UTF8.GetBytes(notification)), true))
+                        {
+                            await Task.WhenAll(
+                                dbClient.ReplaceDocumentAsync(metaClient),
+                                topicClient.SendAsync(message));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        l($"Failed to update state and send notification {ex}");
                     }
                 }
             }
+
+            if (updatesPerformed)
+                MemoryCache.Default.Remove(CACHE_KEY_META_CLIENTS);
+
+            return updatesPerformed;
         }
 
         private static IReliableReadWriteDocumentClient getDocumentClient(string dbEndPoint, string dbAccessKey)
@@ -152,6 +167,17 @@ namespace ClientsState
             return client;
         }
 
+        private static bool isStateChanged(Client metaClient, DateTime lastPing, DateTime now)
+        {
+            if (metaClient.IsOnline && now.Add(-INTERVAL_SWITCH_STATE) > lastPing)
+                l($"Client {metaClient.Id} was ONLINE, but it's last ping occurred on {lastPing}, thus the state will be changed to OFFLINE.");
+            else if (!metaClient.IsOnline && now.Add(-INTERVAL_SWITCH_STATE) < lastPing)
+                l($"Client {metaClient.Id} was OFFLINE, but it's last ping occurred on {lastPing}, thus the state will be changed to ONLINE.");
+            else
+                return false;
+            return true;
+        }
+
         private static void l(string message)
         {
             l(message, null);
@@ -159,17 +185,16 @@ namespace ClientsState
 
         private static void l(string message, params object[] arg)
         {
-            var formatedMessage = $"[{DateTime.UtcNow.ToShortTimeString()}]\t{message}";
             if (arg == null)
             {
-                Console.Out.WriteLine(formatedMessage);
+                Console.Out.WriteLine(message);
                 if (scm_logger != null)
-                    scm_logger.WriteLine(formatedMessage);
+                    scm_logger.WriteLine(message);
             }
             else {
-                Console.Out.WriteLine(formatedMessage, arg);
+                Console.Out.WriteLine(message, arg);
                 if (scm_logger != null)
-                    scm_logger.WriteLine(formatedMessage, arg);
+                    scm_logger.WriteLine(message, arg);
             }
         }
     }
