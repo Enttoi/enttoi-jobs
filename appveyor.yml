@@ -13,6 +13,8 @@ test: off
 artifacts:
 - path: src\ClientsState\bin\Release
   name: ClientsState
+- path: src\HistoryWriter\bin\Release
+  name: HistoryWriter
 deploy:
 - provider: Environment
   name: EnttoiJobs

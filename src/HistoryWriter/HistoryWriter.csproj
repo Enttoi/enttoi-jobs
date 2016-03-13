@@ -96,6 +96,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Models\ClientStateHistory.cs" />
+    <Compile Include="Models\ClientStateMessage.cs" />
+    <Compile Include="Models\SensorStateHistory.cs" />
+    <Compile Include="Models\SensorStateMessage.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Functions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
