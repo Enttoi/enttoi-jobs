@@ -1,23 +1,27 @@
 ﻿using JobsCommon;
 using Microsoft.Azure.WebJobs;
-using System;
+using Microsoft.Azure.WebJobs.ServiceBus;
 
-namespace ClientsState
+namespace HistoryWriter
 {
     class Program
     {
         static void Main()
         {
-            using (var host = new JobHost(new JobHostConfiguration
+            var config = new JobHostConfiguration
             {
                 DashboardConnectionString = Configurations.StorageConnectionString,
                 StorageConnectionString = Configurations.StorageConnectionString
-            }))
-            {
+            };
+            config.UseServiceBus(new ServiceBusConfiguration {
+                ConnectionString = Configurations.ServiceBusConnectionString
+            });
 
-                var task = host.CallAsync(typeof(Functions).GetMethod("MonitorClientsState"));
+            using (var host = new JobHost(config))
+            {
                 host.RunAndBlock();
             }
         }
+
     }
 }

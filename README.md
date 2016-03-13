@@ -7,3 +7,6 @@ The set of jobs that executed either on scheduled basis or in always-running mod
 #### ClientsState
 Reads client's latest ping time from blob storage and updates the state of the client in meta data store of clients.
 
+#### HistoryWriter
+Writes historical data of sensors and clients state.
+
