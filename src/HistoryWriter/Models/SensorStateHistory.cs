@@ -27,7 +27,7 @@ namespace HistoryWriter.Models
             var now = DateTime.UtcNow;
 
             this.PartitionKey = $"{now.Year}-{now.Month}-{now.Day}-{sensorStateMessage.ClientId}-{sensorStateMessage.SensorId}";
-            this.RowKey = now.Ticks.ToString();
+            this.RowKey = sensorStateMessage.Timestamp.Ticks.ToString();
 
             this.SensorId = sensorStateMessage.SensorId;
             this.SensorType = sensorStateMessage.SensorType;
