@@ -24,7 +24,7 @@ namespace HistoryWriter.Models
             var now = DateTime.UtcNow;            
 
             this.PartitionKey = clientStateMessage.ClientId.ToString();
-            this.RowKey = clientStateMessage.Timestamp.Ticks.ToString();
+            this.RowKey = clientStateMessage.Timestamp.Ticks.ToString("d19");
 
             this.ClientId = clientStateMessage.ClientId;
             this.IsOnline = clientStateMessage.NewState;
