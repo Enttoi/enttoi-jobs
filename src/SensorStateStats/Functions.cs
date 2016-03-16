@@ -103,14 +103,16 @@ namespace SensorStateStats
                 .SingleOrDefault();
         }
 
-        private static void foo(CloudTable sensorsTableRef, CloudTable clientsTableRef, DateTime from, DateTime to)
+        private static void foo(CloudTable clientsTableRef, CloudTable sensorsTableRef, Guid clientId, int sensorId, DateTime from, DateTime to)
         {
-            var clientQuery = new TableQuery<ClientStateHistory>().Where(
-                TableQuery.CombineFilters(
-                    TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "Smith"),
-                    TableOperators.And,
-                    TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.LessThan, "E")));
+            var ticksFrom = from.Ticks.ToString("d19");
+            var ticksTo = to.Ticks.ToString("d19");
 
+            var clientsQuery = new StorageRangeQuery<ClientStateHistory>(clientId.ToString(), ticksFrom, ticksTo);
+            var clientHistory = clientsQuery.ExecuteOn(clientsTableRef);
+
+            var sensorsQuery = new StorageRangeQuery<SensorStateHistory>($"{clientId}-{sensorId}", ticksFrom, ticksTo);
+            var sensorsHistory = clientsQuery.ExecuteOn(sensorsTableRef);
         }
     }
 }

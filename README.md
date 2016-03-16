@@ -10,3 +10,6 @@ Reads client's latest ping time from blob storage and updates the state of the c
 #### HistoryWriter
 Writes historical data of sensors and clients state.
 
+#### SensorStateStats
+Generates statistics from history records.
+

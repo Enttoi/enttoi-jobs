@@ -1,8 +1,9 @@
-﻿using System;
+﻿using Microsoft.WindowsAzure.Storage.Table;
+using System;
 
 namespace SensorStateStats.Models
 {
-    public class ClientStateHistory
+    public class ClientStateHistory : TableEntity
     {
         public Guid ClientId { get; set; }
 
