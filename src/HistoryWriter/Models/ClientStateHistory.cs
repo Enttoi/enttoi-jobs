@@ -15,18 +15,21 @@ namespace HistoryWriter.Models
 
         public DateTime StateChangedTimestamp { get; set; }
 
+        public long PreviousStateDurationMs { get; set; }
+
         public ClientStateHistory(ClientStateMessage clientStateMessage)
         {
             if (clientStateMessage == null) throw new ArgumentNullException(nameof(clientStateMessage));
 
             var now = DateTime.UtcNow;            
 
-            this.PartitionKey = $"{now.Year}-{now.Month}-{now.Day}-{clientStateMessage.ClientId}";
+            this.PartitionKey = clientStateMessage.ClientId.ToString();
             this.RowKey = clientStateMessage.Timestamp.Ticks.ToString();
 
             this.ClientId = clientStateMessage.ClientId;
             this.IsOnline = clientStateMessage.NewState;
             this.StateChangedTimestamp = clientStateMessage.Timestamp;
+            this.PreviousStateDurationMs = clientStateMessage.PreviousStateDurationMs;
         }
     }
 }

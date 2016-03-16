@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HistoryWriter", "HistoryWri
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JobsCommon", "JobsCommon\JobsCommon.csproj", "{87D60F9B-0D38-4AA4-BCF8-D2D686782079}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SensorStateStats", "SensorStateStats\SensorStateStats.csproj", "{2153E9DF-DFA9-418E-874B-ACCAAA61FB38}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{87D60F9B-0D38-4AA4-BCF8-D2D686782079}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87D60F9B-0D38-4AA4-BCF8-D2D686782079}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{87D60F9B-0D38-4AA4-BCF8-D2D686782079}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2153E9DF-DFA9-418E-874B-ACCAAA61FB38}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2153E9DF-DFA9-418E-874B-ACCAAA61FB38}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2153E9DF-DFA9-418E-874B-ACCAAA61FB38}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2153E9DF-DFA9-418E-874B-ACCAAA61FB38}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

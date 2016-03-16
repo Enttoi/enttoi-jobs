@@ -15,6 +15,10 @@ namespace HistoryWriter.Models
 
         public DateTime StateChangedTimestamp { get; set; }
 
+        public int PreviousState { get; set; }
+
+        public long PreviousStateDurationMs { get; set; }
+
 
         public SensorStateHistory(SensorStateMessage sensorStateMessage)
         {
@@ -22,7 +26,7 @@ namespace HistoryWriter.Models
             
             var now = DateTime.UtcNow;
 
-            this.PartitionKey = $"{now.Year}-{now.Month}-{now.Day}-{sensorStateMessage.ClientId}-{sensorStateMessage.SensorId}";
+            this.PartitionKey = $"{sensorStateMessage.ClientId}-{sensorStateMessage.SensorId}";
             this.RowKey = sensorStateMessage.Timestamp.Ticks.ToString();
 
             this.SensorId = sensorStateMessage.SensorId;
@@ -31,6 +35,8 @@ namespace HistoryWriter.Models
 
             this.StateChangedTimestamp = sensorStateMessage.Timestamp;
             this.State = sensorStateMessage.NewState;
+            this.PreviousState = sensorStateMessage.PreviousState;
+            this.PreviousStateDurationMs = sensorStateMessage.PreviousStateDurationMs;
         }
     }
 }

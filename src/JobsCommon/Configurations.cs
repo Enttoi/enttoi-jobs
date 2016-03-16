@@ -5,6 +5,13 @@ namespace JobsCommon
 {
     public static class Configurations
     {
+        public const string HISTORY_TABLE_CLIENTS_STATE = "HistoryDayliClientsState";
+        public const string HISTORY_TABLE_SENSORS_STATE = "HistoryDayliSensorsState";
+        public const string TABLE_CLIENTS_STATE = "ClientsState";
+
+        public const string TOPIC_CLIENTS_STATE = "client-state-changed";
+        public const string TOPIC_SENSORS_STATE = "sensor-state-changed";
+
         public static string StorageConnectionString => conf("STORAGE_CONNECTION_STRING") ?? "UseDevelopmentStorage=true";
 
         public static string ServiceBusConnectionString => conf("SERVICEBUS_CONNECTION_STRING");

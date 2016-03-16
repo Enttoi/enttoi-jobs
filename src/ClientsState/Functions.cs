@@ -29,10 +29,7 @@ namespace ClientsState
 
         private static readonly Uri _collectionUri = new Uri($"dbs/{Configurations.DocumentDbName}/colls/clients", UriKind.Relative);
         private static readonly SqlQuerySpec _queryAllClients = new SqlQuerySpec("SELECT * FROM c WHERE c.isDisabled = false");
-
-        private const string TABLE_CLIENTS_STATE = "ClientsState";
-        private const string TOPIC_CLIENTS_STATE = "client-state-changed";
-
+        
         private static ILogger _logger = new ConsoleLogger();
 
         [NoAutomaticTrigger]
@@ -42,7 +39,7 @@ namespace ClientsState
 
             var documentClient = ServiceClientFactory.GetDocumentClient();
             var storageClient = ServiceClientFactory.GetStorageClient();
-            var topicsClient = ServiceClientFactory.GetTopicClient(TOPIC_CLIENTS_STATE);
+            var topicsClient = ServiceClientFactory.GetTopicClient(Configurations.TOPIC_CLIENTS_STATE);
 
             _logger.Log($"Clients initialized => starting loop with interval {INTERVAL_CHECK}");
             
@@ -71,7 +68,7 @@ namespace ClientsState
 
         private static async Task<bool> checkClientsState(IReliableReadWriteDocumentClient dbClient, CloudTableClient tableClient, TopicClient topicClient)
         {
-            var tableRef = tableClient.GetTableReference(TABLE_CLIENTS_STATE);
+            var tableRef = tableClient.GetTableReference(Configurations.TABLE_CLIENTS_STATE);
             var metaClients = MemoryCache.Default.Get(CACHE_KEY_META_CLIENTS) as List<Client>;
 
             if (metaClients == null)
