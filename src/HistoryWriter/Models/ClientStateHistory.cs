@@ -11,11 +11,9 @@ namespace HistoryWriter.Models
     {
         public Guid ClientId { get; set; }
 
-        public bool NewState { get; set; }
+        public bool IsOnline { get; set; }
 
-        public long PreviousStateDurationMs { get; set; }
-
-        public DateTime NewStateTimestamp { get; set; }
+        public DateTime StateChangedTimestamp { get; set; }
 
         public ClientStateHistory(ClientStateMessage clientStateMessage)
         {
@@ -27,9 +25,8 @@ namespace HistoryWriter.Models
             this.RowKey = clientStateMessage.Timestamp.Ticks.ToString();
 
             this.ClientId = clientStateMessage.ClientId;
-            this.NewState = clientStateMessage.NewState;
-            this.PreviousStateDurationMs = clientStateMessage.PreviousStateDurationMs;
-            this.NewStateTimestamp = clientStateMessage.Timestamp;
+            this.IsOnline = clientStateMessage.NewState;
+            this.StateChangedTimestamp = clientStateMessage.Timestamp;
         }
     }
 }

@@ -11,13 +11,9 @@ namespace HistoryWriter.Models
 
         public Guid ClientId { get; set; }
 
-        public int NewState { get; set; }
+        public int State { get; set; }
 
-        public DateTime NewStateTimestamp { get; set; }
-
-        public int PreviousState { get; set; }
-
-        public long PreviousStateDurationMs { get; set; }
+        public DateTime StateChangedTimestamp { get; set; }
 
 
         public SensorStateHistory(SensorStateMessage sensorStateMessage)
@@ -32,9 +28,9 @@ namespace HistoryWriter.Models
             this.SensorId = sensorStateMessage.SensorId;
             this.SensorType = sensorStateMessage.SensorType;
             this.ClientId = sensorStateMessage.ClientId;
-            this.NewStateTimestamp = sensorStateMessage.Timestamp;
-            this.PreviousState = sensorStateMessage.PreviousState;
-            this.PreviousStateDurationMs = sensorStateMessage.PreviousStateDurationMs;
+
+            this.StateChangedTimestamp = sensorStateMessage.Timestamp;
+            this.State = sensorStateMessage.NewState;
         }
     }
 }
