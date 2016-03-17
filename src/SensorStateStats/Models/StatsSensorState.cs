@@ -12,6 +12,12 @@ namespace SensorStateStats.Models
         [JsonProperty(PropertyName = "sensorId")]
         public int SensorId { get; set; }
 
+        [JsonProperty(PropertyName = "clientPrevHistRowKey")]
+        public string ClientPreviousHistoryRecordRowKey { get; set; }
+
+        [JsonProperty(PropertyName = "sensorPrevHistRowKey")]
+        public string SensorPreviousHistoryRecordRowKey { get; set; }
+
         [JsonProperty(PropertyName = "timeStampHourResolution")]
         public DateTime TimeStampHourResolution { get; set; }
 

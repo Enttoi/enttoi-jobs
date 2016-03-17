@@ -4,6 +4,7 @@ using SensorStateStats.Models;
 using SensorStateStats.Storage;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace SensorStateStats.Processors
 {
@@ -51,11 +52,19 @@ namespace SensorStateStats.Processors
 
                 foreach (var metaSensor in metaClient.Sensors)
                 {
-                    var result = processSingleSensor(now, metaClient, metaSensor, oldestClientHistory);
-                    if (result == -1)
-                        break;
-                    if (result > 0)
-                        recordsGenerated ++;
+                    var history = getHourlyHistory(now, metaClient, metaSensor, oldestClientHistory);
+                    if (history == null && oldestClientHistory.IsValueCreated && oldestClientHistory.Value == null)
+                        // no point to check other sensors for this client, since
+                        // the client never went online
+                        break; 
+                    else if (history == null)
+                        continue;
+                    
+                    var statsRecord = calculateHourlyStats(history.Item1, history.Item2);
+                    _statsCollection.StoreHourlyStats(statsRecord);
+
+                    _logger.Log($"Stored stats:\n {JsonConvert.SerializeObject(statsRecord, Formatting.Indented)}");
+                    recordsGenerated ++;
                 }
             }
 
@@ -74,7 +83,7 @@ namespace SensorStateStats.Processors
         /// 0 no statistics generated
         /// >0 - generated some stats
         /// </returns>
-        private int processSingleSensor(DateTime now, Client client, Sensor sensor, Lazy<ClientStateHistory> oldestClientHistory)
+        private Tuple<List<ClientStateHistory>, List<SensorStateHistory>> getHourlyHistory(DateTime now, Client client, Sensor sensor, Lazy<ClientStateHistory> oldestClientHistory)
         {
             var lastStat = _statsCollection.GetLatestStatsRecord(client.ClientId, sensor.sensorId);
             DateTime fromHour; // the beginning of the hour for which stats generated
@@ -85,7 +94,7 @@ namespace SensorStateStats.Processors
                 if (oldestClientHistory.Value == null)
                 {
                     _logger.Log($"Client {client.ClientId} doesn't have any history records");
-                    return -1;
+                    return null;
                 }
                 fromHour = new DateTime(
                     oldestClientHistory.Value.StateChangedTimestamp.Year,
@@ -100,23 +109,38 @@ namespace SensorStateStats.Processors
 
             if (fromHour.AddHours(1) > now)
                 // too soon to generate stats for this hour
-                return 0;
+                return null;
 
-            _logger.Log($"Going to generate stats for client {client.ClientId} sensor {sensor.sensorId} from {fromHour} until {fromHour.AddHours(1)}");
+            var clientsHistoryRecords = _clientsHistory.GetHourHistory(client.ClientId, fromHour);
+            var sensorsHistoryRecords = _sensorsHistory.GetHourHistory(client.ClientId, sensor.sensorId, fromHour);
 
-            var sensorsHistory = _sensorsHistory.GetHourHistory(client.ClientId, sensor.sensorId, fromHour);
-            var clientsHistory = _clientsHistory.GetHourHistory(client.ClientId, fromHour);
+            _logger.Log($"History records found for client {client.ClientId} sensor {sensor.sensorId} from {fromHour} until {fromHour.AddHours(1)} are {clientsHistoryRecords.Count} client and {sensorsHistoryRecords.Count} sensors records");
 
-            var statsRecord = calculateStats(sensorsHistory, clientsHistory);
-            _statsCollection.StoreHourlyStats(statsRecord);
+            if(lastStat == null)
+            {
+                clientsHistoryRecords.Insert(0, null);
+                sensorsHistoryRecords.Insert(0, null);
+            }
+            else
+            {
+                clientsHistoryRecords.Insert(0, _clientsHistory.Get(
+                    $"{client.ClientId}", lastStat.ClientPreviousHistoryRecordRowKey));
+                sensorsHistoryRecords.Insert(0, _sensorsHistory.Get(
+                    $"{client.ClientId}-{sensor.sensorId}", lastStat.SensorPreviousHistoryRecordRowKey));
+            }
 
-            _logger.Log($"Stored stats:\n {JsonConvert.SerializeObject(statsRecord, Formatting.Indented)}");
-
-            return 1;
+            return Tuple.Create(clientsHistoryRecords, sensorsHistoryRecords);
         }
 
-        private StatsSensorState calculateStats(List<SensorStateHistory> sensorsHistory, List<ClientStateHistory> clientsHistory)
+        private StatsSensorState calculateHourlyStats(List<ClientStateHistory> clientsHistory, List<SensorStateHistory> sensorsHistory)
         {
+
+
+
+            var stats = new StatsSensorState {
+                ClientPreviousHistoryRecordRowKey = clientsHistory.Last().RowKey,
+                SensorPreviousHistoryRecordRowKey = sensorsHistory.Last().RowKey
+            };
             throw new NotImplementedException();
         }
     }

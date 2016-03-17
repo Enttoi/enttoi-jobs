@@ -115,6 +115,7 @@
     <Compile Include="Storage\IClientsCollection.cs" />
     <Compile Include="Storage\ISensorsHistoryTable.cs" />
     <Compile Include="Storage\IStatsCollection.cs" />
+    <Compile Include="Storage\IStorageTable.cs" />
     <Compile Include="Storage\SensorsHistoryTable.cs" />
     <Compile Include="Storage\StatsCollection.cs" />
     <Compile Include="Storage\StorageRangeQuery.cs" />

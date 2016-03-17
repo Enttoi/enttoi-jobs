@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace SensorStateStats.Storage
 {
-    class SensorsHistoryTable : BaseStorageTable, ISensorsHistoryTable
+    class SensorsHistoryTable : BaseStorageTable<SensorStateHistory>, ISensorsHistoryTable
     {
         public SensorsHistoryTable(ILogger logger) : base(logger)
         {
