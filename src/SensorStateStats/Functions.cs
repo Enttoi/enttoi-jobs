@@ -29,7 +29,7 @@ namespace SensorStateStats
 
                     using (var scope = container.BeginLifetimeScope())
                     {
-                        var recordsGenerated = false;
+                        var recordsGenerated = 0;
                         try
                         {
                             recordsGenerated = scope.Resolve<SensorStateStatsProcessor>()
@@ -40,8 +40,8 @@ namespace SensorStateStats
                             logger.Log($"Error occurred in checking clients state: {ex.Message}");
                         }
 
-                        if (recordsGenerated)
-                            logger.Log($"Generated stats records within {watch.ElapsedMilliseconds}ms");
+                        if (recordsGenerated > 0)
+                            logger.Log($"Generated {recordsGenerated} stats records within {watch.ElapsedMilliseconds}ms");
 
                     }
 

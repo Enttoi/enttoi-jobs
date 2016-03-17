@@ -32,5 +32,10 @@ namespace SensorStateStats.Storage
                 .ToList()
                 .SingleOrDefault();
         }
+
+        public void StoreHourlyStats(StatsSensorState statsRecord)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
