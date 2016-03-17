@@ -1,12 +1,13 @@
 ﻿using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
-namespace SensorStateStats
+namespace SensorStateStats.Storage
 {
     public class StorageRangeQuery<T> where T : TableEntity, new()
     {
-        protected TableQuery<T> Query;
+        private TableQuery<T> _query;
 
         public StorageRangeQuery(string partitionKey, string from, string to)
         {
@@ -18,17 +19,17 @@ namespace SensorStateStats
             var low = TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.GreaterThanOrEqual, from);
             var high = TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.LessThanOrEqual, to);
 
-            this.Query = new TableQuery<T>().Where(
+            this._query = new TableQuery<T>().Where(
                 TableQuery.CombineFilters(
-                    partition, 
+                    partition,
                     TableOperators.And,
                     TableQuery.CombineFilters(low, TableOperators.And, high)));
         }
 
-        public virtual IEnumerable<T> ExecuteOn(CloudTable table)
+        public IEnumerable<T> GetFullResult(CloudTable table)
         {
             var token = new TableContinuationToken();
-            var segment = table.ExecuteQuerySegmented(Query, token);
+            var segment = table.ExecuteQuerySegmented(_query, token);
             while (token != null)
             {
                 foreach (var result in segment)
@@ -36,8 +37,16 @@ namespace SensorStateStats
                     yield return result;
                 }
                 token = segment.ContinuationToken;
-                segment = table.ExecuteQuerySegmented(Query, token);
+                segment = table.ExecuteQuerySegmented(_query, token);
             }
+        }
+
+        public T GetTopOne(CloudTable table)
+        {
+            return table
+                .ExecuteQuery(this._query.Take(1))
+                .ToList()
+                .FirstOrDefault() as T;
         }
     }
 }
