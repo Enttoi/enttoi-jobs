@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace SensorStateStats.Storage
 {
-    class StatsCollection : BaseDocumentCollection
+    class StatsCollection : BaseDocumentCollection, IStatsCollection
     {
         private static readonly Uri _statsCollectionUri = new Uri($"dbs/{Configurations.DocumentDbName}/colls/stats-sensor-states", UriKind.Relative);
 

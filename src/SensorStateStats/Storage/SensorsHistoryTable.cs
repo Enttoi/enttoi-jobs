@@ -8,9 +8,9 @@ using System.Linq;
 
 namespace SensorStateStats.Storage
 {
-    class SensorHistoryTable : BaseStorageTable
+    class SensorsHistoryTable : BaseStorageTable, ISensorsHistoryTable
     {
-        public SensorHistoryTable(ILogger logger) : base(logger)
+        public SensorsHistoryTable(ILogger logger) : base(logger)
         {
             _table = _client.GetTableReference(Configurations.HISTORY_TABLE_SENSORS_STATE);
         }

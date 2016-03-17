@@ -9,7 +9,7 @@ using System.Runtime.Caching;
 
 namespace SensorStateStats.Storage
 {
-    class ClientsCollection : BaseDocumentCollection
+    class ClientsCollection : BaseDocumentCollection, IClientsCollection
     {
         private const string CACHE_KEY_META_CLIENTS = "__meta_clients";
         private static readonly TimeSpan CACHE_TTL_META_CLIENTS = TimeSpan.FromMinutes(10);
