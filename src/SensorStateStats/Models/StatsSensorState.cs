@@ -1,6 +1,7 @@
 ﻿using Microsoft.Azure.Documents;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 
 namespace SensorStateStats.Models
 {
@@ -22,6 +23,6 @@ namespace SensorStateStats.Models
         public DateTime TimeStampHourResolution { get; set; }
 
         [JsonProperty(PropertyName = "states")]
-        public SensorState[] States { get; set; }
+        public Dictionary<int, long> States { get; set; }
     }
 }

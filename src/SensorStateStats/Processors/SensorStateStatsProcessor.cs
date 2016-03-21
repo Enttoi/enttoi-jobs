@@ -1,4 +1,5 @@
 ﻿using JobsCommon.Logger;
+using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 using SensorStateStats.Models;
 using SensorStateStats.Storage;
@@ -47,24 +48,50 @@ namespace SensorStateStats.Processors
 
             foreach (var metaClient in _clientsCollection.GetClients())
             {
-                var oldestClientHistory = new Lazy<ClientStateHistory>(() =>
-                    _clientsHistory.GetOldestClientHistory(metaClient.ClientId));
-
                 foreach (var metaSensor in metaClient.Sensors)
                 {
-                    var history = getHourlyHistory(now, metaClient, metaSensor, oldestClientHistory);
-                    if (history == null && oldestClientHistory.IsValueCreated && oldestClientHistory.Value == null)
-                        // no point to check other sensors for this client, since
-                        // the client never went online
-                        break; 
-                    else if (history == null)
-                        continue;
-                    
-                    var statsRecord = calculateHourlyStats(history.Item1, history.Item2);
-                    _statsCollection.StoreHourlyStats(statsRecord);
+                    // get previous stats written for this sensor (if any)
+                    var previousStats = _statsCollection.GetLatestStatsRecord(metaClient.ClientId, metaSensor.sensorId);
 
-                    _logger.Log($"Stored stats:\n {JsonConvert.SerializeObject(statsRecord, Formatting.Indented)}");
-                    recordsGenerated ++;
+                    // get a starting time of the hour for which stats will be generated
+                    var oldestSensorHistory = new Lazy<SensorStateHistory>(() =>
+                        _sensorsHistory.GetOldestHistoryRecord(metaClient.ClientId, metaSensor.sensorId));
+                    var startingHour = getStartingHour(previousStats, oldestSensorHistory);
+
+                    if (startingHour == null)
+                    {
+                        _logger.Log($"Sensor {metaSensor.sensorId} in client {metaClient.ClientId} doesn't have any history records");
+                        continue;
+                    }
+
+                    if (startingHour.Value.AddHours(1) > now)
+                        // too soon to generate stats for this hour
+                        continue;
+
+                    // get the actual history records for the given hour 
+                    // note, there could be no records - sensor was offline the entire hour
+                    var clientsHistoryRecords = _clientsHistory.GetHourHistory(metaClient.ClientId, startingHour.Value);
+                    var sensorsHistoryRecords = _sensorsHistory.GetHourHistory(metaClient.ClientId, metaSensor.sensorId, startingHour.Value);
+
+                    // calculate statistics for the new stats record
+                    var newStats = new StatsSensorState
+                    {
+                        ClientId = metaClient.ClientId,
+                        SensorId = metaSensor.sensorId,
+                        TimeStampHourResolution = startingHour.Value,
+                        States = new Dictionary<int, long>() { { -1, 0 }, { 0, 0 }, { 1, 0 } }
+                    };
+                    calculateHourlyStats(clientsHistoryRecords, sensorsHistoryRecords, previousStats, ref newStats);
+
+                    // preserve the reference to the last history record used for calculating this stats record
+                    newStats.ClientPreviousHistoryRecordRowKey = clientsHistoryRecords.LastOrDefault()?.RowKey ?? previousStats?.ClientPreviousHistoryRecordRowKey;
+                    newStats.SensorPreviousHistoryRecordRowKey = sensorsHistoryRecords.LastOrDefault()?.RowKey ?? previousStats?.SensorPreviousHistoryRecordRowKey;
+
+
+                    _statsCollection.StoreHourlyStats(newStats);
+                    _logger.Log($"Stored stats:\n {JsonConvert.SerializeObject(newStats, Formatting.Indented)}");
+
+                    recordsGenerated++;
                 }
             }
 
@@ -72,76 +99,60 @@ namespace SensorStateStats.Processors
         }
 
         /// <summary>
-        /// Processes stats for single sensor.
+        /// Gets the starting hour for which the statistics will be calculated.
         /// </summary>
-        /// <param name="now">The current time.</param>
-        /// <param name="client">The client.</param>
-        /// <param name="sensor">The sensor.</param>
-        /// <param name="oldestClientHistory">The oldest client history.</param>
-        /// <returns>
-        /// -1 should skip the entire client
-        /// 0 no statistics generated
-        /// >0 - generated some stats
-        /// </returns>
-        private Tuple<List<ClientStateHistory>, List<SensorStateHistory>> getHourlyHistory(DateTime now, Client client, Sensor sensor, Lazy<ClientStateHistory> oldestClientHistory)
+        /// <param name="latestStatsRecord">The latest (most recent) stats record.</param>
+        /// <param name="oldestSensorHistory">The oldest sensor history.</param>
+        private DateTime? getStartingHour(StatsSensorState latestStatsRecord, Lazy<SensorStateHistory> oldestSensorHistory)
         {
-            var lastStat = _statsCollection.GetLatestStatsRecord(client.ClientId, sensor.sensorId);
-            DateTime fromHour; // the beginning of the hour for which stats generated
-
-            if (lastStat == null)
+            if (latestStatsRecord == null)
             {
                 // no previously generated statistics for this sensor => get the very first history record
-                if (oldestClientHistory.Value == null)
-                {
-                    _logger.Log($"Client {client.ClientId} doesn't have any history records");
+                if (oldestSensorHistory.Value == null)
                     return null;
-                }
-                fromHour = new DateTime(
-                    oldestClientHistory.Value.StateChangedTimestamp.Year,
-                    oldestClientHistory.Value.StateChangedTimestamp.Month,
-                    oldestClientHistory.Value.StateChangedTimestamp.Day,
-                    oldestClientHistory.Value.StateChangedTimestamp.Hour, 0, 0, DateTimeKind.Utc);
+
+                return new DateTime(
+                    oldestSensorHistory.Value.StateChangedTimestamp.Year,
+                    oldestSensorHistory.Value.StateChangedTimestamp.Month,
+                    oldestSensorHistory.Value.StateChangedTimestamp.Day,
+                    oldestSensorHistory.Value.StateChangedTimestamp.Hour, 0, 0, DateTimeKind.Utc);
             }
             else
             {
-                fromHour = lastStat.TimeStampHourResolution.AddHours(1);
+                return latestStatsRecord.TimeStampHourResolution.AddHours(1);
             }
-
-            if (fromHour.AddHours(1) > now)
-                // too soon to generate stats for this hour
-                return null;
-
-            var clientsHistoryRecords = _clientsHistory.GetHourHistory(client.ClientId, fromHour);
-            var sensorsHistoryRecords = _sensorsHistory.GetHourHistory(client.ClientId, sensor.sensorId, fromHour);
-
-            _logger.Log($"History records found for client {client.ClientId} sensor {sensor.sensorId} from {fromHour} until {fromHour.AddHours(1)} are {clientsHistoryRecords.Count} client and {sensorsHistoryRecords.Count} sensors records");
-
-            if(lastStat == null)
-            {
-                clientsHistoryRecords.Insert(0, null);
-                sensorsHistoryRecords.Insert(0, null);
-            }
-            else
-            {
-                clientsHistoryRecords.Insert(0, _clientsHistory.Get(
-                    $"{client.ClientId}", lastStat.ClientPreviousHistoryRecordRowKey));
-                sensorsHistoryRecords.Insert(0, _sensorsHistory.Get(
-                    $"{client.ClientId}-{sensor.sensorId}", lastStat.SensorPreviousHistoryRecordRowKey));
-            }
-
-            return Tuple.Create(clientsHistoryRecords, sensorsHistoryRecords);
         }
 
-        private StatsSensorState calculateHourlyStats(List<ClientStateHistory> clientsHistory, List<SensorStateHistory> sensorsHistory)
+        private void calculateHourlyStats(List<ClientStateHistory> clientsHistory, List<SensorStateHistory> sensorsHistory, StatsSensorState previousStats, ref StatsSensorState stats)
         {
-
-
-
-            var stats = new StatsSensorState {
-                ClientPreviousHistoryRecordRowKey = clientsHistory.Last().RowKey,
-                SensorPreviousHistoryRecordRowKey = sensorsHistory.Last().RowKey
-            };
             throw new NotImplementedException();
+            //if (previousStats != null)
+            //{
+            //    memorizedClientPortion = _clientsHistory.Get($"{stats.ClientId}", previousStats.ClientPreviousHistoryRecordRowKey);
+            //    memorizedPortion = _sensorsHistory.Get($"{stats.ClientId}-{stats.SensorId}", previousStats.ClientPreviousHistoryRecordRowKey);
+
+
+
+            //}
+            //else
+            //{
+            //    // first ever record => there is at least one history record for sensor
+            //    if (sensorsHistory.Count > 1) 
+            //    {
+            //        SensorStateHistory memorizedSensorPortion = sensorsHistory[0];
+            //        for (int i = 1; i < sensorsHistory.Count; i++)
+            //        {
+            //            var clientStates = clientsHistory
+            //                .Where(h => h.StateChangedTimestamp > memorizedSensorPortion.StateChangedTimestamp && h.StateChangedTimestamp < sensorsHistory[i].StateChangedTimestamp);
+
+                        
+
+            //            stats.States[memorizedSensorPortion.State] += (long)(sensorsHistory[i].StateChangedTimestamp - memorizedSensorPortion.StateChangedTimestamp).TotalMilliseconds;
+            //            memorizedSensorPortion = sensorsHistory[i];
+            //        }
+            //    }
+            //    stats.States[sensorsHistory.Last().State] += sensorsHistory.Last().StateChangedTimestamp.MsTillTheEndOfHour();
+            //}
         }
     }
 }
