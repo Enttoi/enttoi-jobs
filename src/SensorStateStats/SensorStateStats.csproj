@@ -99,6 +99,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions.cs" />
     <Compile Include="Models\Client.cs" />
     <Compile Include="Models\ClientStateHistory.cs" />
     <Compile Include="Models\Sensor.cs" />

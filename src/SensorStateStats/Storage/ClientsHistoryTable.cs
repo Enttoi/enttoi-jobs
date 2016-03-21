@@ -15,7 +15,7 @@ namespace SensorStateStats.Storage
             _table = _client.GetTableReference(Configurations.HISTORY_TABLE_CLIENTS_STATE);
         }
 
-        public ClientStateHistory GetOldestClientHistory(Guid clientId)
+        public ClientStateHistory GetOldestHistoryRecord(Guid clientId)
         {
             var query = new StorageRangeQuery<ClientStateHistory>(
                 clientId.ToString(), 

@@ -6,8 +6,8 @@ namespace SensorStateStats.Storage
 {
     interface IClientsHistoryTable : IStorageTable<ClientStateHistory>
     {
-        ClientStateHistory GetOldestClientHistory(Guid clientId);
+        ClientStateHistory GetOldestHistoryRecord(Guid clientId);
 
-        List<ClientStateHistory> GetHourHistory(Guid clientId, DateTime from);
+        List<ClientStateHistory> GetHourHistory(Guid clientId, DateTime from);        
     }
 }

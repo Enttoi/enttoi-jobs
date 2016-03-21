@@ -23,5 +23,15 @@ namespace SensorStateStats.Storage
             var sensorsQuery = new StorageRangeQuery<SensorStateHistory>($"{clientId}-{sensorId}", ticksFrom, ticksTo);
             return sensorsQuery.GetFullResult(_table).ToList();
         }
+
+        public SensorStateHistory GetOldestHistoryRecord(Guid clientId, int sensorId)
+        {
+            var query = new StorageRangeQuery<SensorStateHistory>(
+                $"{clientId}-{sensorId}",
+                0.ToString("d19"),
+                DateTime.UtcNow.Ticks.ToString("d19"));
+
+            return query.GetTopOne(_table);
+        }
     }
 }

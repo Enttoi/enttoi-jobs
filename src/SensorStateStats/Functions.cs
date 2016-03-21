@@ -27,9 +27,9 @@ namespace SensorStateStats
                     var watch = new Stopwatch();
                     watch.Start();
 
+                    var recordsGenerated = 0;
                     using (var scope = container.BeginLifetimeScope())
                     {
-                        var recordsGenerated = 0;
                         try
                         {
                             recordsGenerated = scope.Resolve<SensorStateStatsProcessor>()
@@ -45,7 +45,8 @@ namespace SensorStateStats
 
                     }
 
-                    await Task.Delay(INTERVAL_CHECK, token);
+                    if (recordsGenerated == 0)
+                        await Task.Delay(INTERVAL_CHECK, token);
                 }
 
                 logger.Log($"Stopped processing history");
