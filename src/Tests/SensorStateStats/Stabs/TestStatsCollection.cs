@@ -1,6 +1,7 @@
 ﻿using SensorStateStats.Storage;
 using System;
 using SensorStateStats.Models;
+using System.Threading.Tasks;
 
 namespace Tests.SensorStateStats.Stabs
 {
@@ -11,7 +12,7 @@ namespace Tests.SensorStateStats.Stabs
             throw new NotImplementedException();
         }
 
-        public void StoreHourlyStats(StatsSensorState statsRecord)
+        public Task<bool> StoreHourlyStatsAsync(StatsSensorState statsRecord)
         {
             throw new NotImplementedException();
         }

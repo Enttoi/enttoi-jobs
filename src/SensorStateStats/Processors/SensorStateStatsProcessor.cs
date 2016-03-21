@@ -6,6 +6,7 @@ using SensorStateStats.Storage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SensorStateStats.Processors
 {
@@ -42,7 +43,7 @@ namespace SensorStateStats.Processors
         /// </summary>
         /// <param name="now">Current time.</param>
         /// <returns>Amount os sensors for whom stats were produced</returns>
-        public int GenerateHourlyStats(DateTime now)
+        public async Task<int> GenerateHourlyStats(DateTime now)
         {
             var recordsGenerated = 0;
 
@@ -94,11 +95,8 @@ namespace SensorStateStats.Processors
                     newStats.ClientPreviousHistoryRecordRowKey = clientsHistoryRecords.LastOrDefault()?.RowKey ?? previousStats?.ClientPreviousHistoryRecordRowKey;
                     newStats.SensorPreviousHistoryRecordRowKey = sensorsHistoryRecords.LastOrDefault()?.RowKey ?? previousStats?.SensorPreviousHistoryRecordRowKey;
 
-
-                    _statsCollection.StoreHourlyStats(newStats);
-                    _logger.Log($"Stored stats:\n {JsonConvert.SerializeObject(newStats, Formatting.Indented)}");
-
-                    recordsGenerated++;
+                    if(await _statsCollection.StoreHourlyStatsAsync(newStats))
+                        recordsGenerated++;
                 }
             }
 
@@ -138,7 +136,7 @@ namespace SensorStateStats.Processors
         /// <param name="previousClientHistory">The most recent client state change prior to the hour we calculating for (can be null).</param>
         /// <param name="previousSensorHistory">The most recent sensor state change prior to the hour we calculating for (can be null).</param>
         /// <returns>Dictionary where is the key is a state and the value is for how long in ms the sensor stayed in this state</returns>
-        private new Dictionary<int, long> calculateHourlyStats(
+        private Dictionary<int, long> calculateHourlyStats(
                     List<ClientStateHistory> clientsHistory,
                     List<SensorStateHistory> sensorsHistory,
                     ClientStateHistory previousClientHistory,

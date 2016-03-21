@@ -1,5 +1,6 @@
 ﻿using SensorStateStats.Models;
 using System;
+using System.Threading.Tasks;
 
 namespace SensorStateStats.Storage
 {
@@ -7,6 +8,6 @@ namespace SensorStateStats.Storage
     {
         StatsSensorState GetLatestStatsRecord(Guid clientId, int sensorId);
 
-        void StoreHourlyStats(StatsSensorState statsRecord);
+        Task<bool> StoreHourlyStatsAsync(StatsSensorState statsRecord);
     }
 }
