@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace SensorStateStats.Storage
 {
-    interface IClientsCollection
+    public interface IClientsCollection
     {
         List<Client> GetClients();
     }

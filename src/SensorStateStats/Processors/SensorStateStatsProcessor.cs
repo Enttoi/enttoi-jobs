@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace SensorStateStats.Processors
 {
-    class SensorStateStatsProcessor
+    public class SensorStateStatsProcessor
     {
         private ILogger _logger;
         private IClientsCollection _clientsCollection;
@@ -73,15 +73,22 @@ namespace SensorStateStats.Processors
                     var clientsHistoryRecords = _clientsHistory.GetHourHistory(metaClient.ClientId, startingHour.Value);
                     var sensorsHistoryRecords = _sensorsHistory.GetHourHistory(metaClient.ClientId, metaSensor.sensorId, startingHour.Value);
 
+                    // get last history records used when calculating previous hour
+                    ClientStateHistory previousClientHistory = null;
+                    if (previousStats != null && previousStats.ClientPreviousHistoryRecordRowKey != null)
+                        previousClientHistory = _clientsHistory.Get($"{metaClient.ClientId}", previousStats.ClientPreviousHistoryRecordRowKey);
+                    SensorStateHistory previousSensorHistory = null;
+                    if (previousStats != null && previousStats.SensorPreviousHistoryRecordRowKey != null)
+                        previousSensorHistory = _sensorsHistory.Get($"{metaClient.ClientId}-{metaSensor.sensorId}", previousStats.ClientPreviousHistoryRecordRowKey);
+
                     // calculate statistics for the new stats record
                     var newStats = new StatsSensorState
                     {
                         ClientId = metaClient.ClientId,
                         SensorId = metaSensor.sensorId,
                         TimeStampHourResolution = startingHour.Value,
-                        States = new Dictionary<int, long>() { { -1, 0 }, { 0, 0 }, { 1, 0 } }
+                        States = calculateHourlyStats(clientsHistoryRecords, sensorsHistoryRecords, previousClientHistory, previousSensorHistory)
                     };
-                    calculateHourlyStats(clientsHistoryRecords, sensorsHistoryRecords, previousStats, ref newStats);
 
                     // preserve the reference to the last history record used for calculating this stats record
                     newStats.ClientPreviousHistoryRecordRowKey = clientsHistoryRecords.LastOrDefault()?.RowKey ?? previousStats?.ClientPreviousHistoryRecordRowKey;
@@ -123,9 +130,22 @@ namespace SensorStateStats.Processors
             }
         }
 
-        private void calculateHourlyStats(List<ClientStateHistory> clientsHistory, List<SensorStateHistory> sensorsHistory, StatsSensorState previousStats, ref StatsSensorState stats)
+        /// <summary>
+        /// Calculates for how long the sensor stayed in each state during the hour.
+        /// </summary>
+        /// <param name="clientsHistory">The clients states changes history for the given hour (can be empty).</param>
+        /// <param name="sensorsHistory">The sensors states changes history for the give hour (can be empty).</param>
+        /// <param name="previousClientHistory">The most recent client state change prior to the hour we calculating for (can be null).</param>
+        /// <param name="previousSensorHistory">The most recent sensor state change prior to the hour we calculating for (can be null).</param>
+        /// <returns>Dictionary where is the key is a state and the value is for how long in ms the sensor stayed in this state</returns>
+        private new Dictionary<int, long> calculateHourlyStats(
+                    List<ClientStateHistory> clientsHistory,
+                    List<SensorStateHistory> sensorsHistory,
+                    ClientStateHistory previousClientHistory,
+                    SensorStateHistory previousSensorHistory)
         {
-            throw new NotImplementedException();
+            var result = new Dictionary<int, long>() { { -1, 0 }, { 0, 0 }, { 1, 0 } };
+            return result;
             //if (previousStats != null)
             //{
             //    memorizedClientPortion = _clientsHistory.Get($"{stats.ClientId}", previousStats.ClientPreviousHistoryRecordRowKey);
@@ -145,7 +165,7 @@ namespace SensorStateStats.Processors
             //            var clientStates = clientsHistory
             //                .Where(h => h.StateChangedTimestamp > memorizedSensorPortion.StateChangedTimestamp && h.StateChangedTimestamp < sensorsHistory[i].StateChangedTimestamp);
 
-                        
+
 
             //            stats.States[memorizedSensorPortion.State] += (long)(sensorsHistory[i].StateChangedTimestamp - memorizedSensorPortion.StateChangedTimestamp).TotalMilliseconds;
             //            memorizedSensorPortion = sensorsHistory[i];

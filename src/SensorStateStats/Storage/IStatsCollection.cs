@@ -3,7 +3,7 @@ using System;
 
 namespace SensorStateStats.Storage
 {
-    interface IStatsCollection
+    public interface IStatsCollection
     {
         StatsSensorState GetLatestStatsRecord(Guid clientId, int sensorId);
 

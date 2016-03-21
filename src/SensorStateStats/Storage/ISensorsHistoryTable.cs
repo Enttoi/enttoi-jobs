@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace SensorStateStats.Storage
 {
-    interface ISensorsHistoryTable : IStorageTable<SensorStateHistory>
+    public interface ISensorsHistoryTable : IStorageTable<SensorStateHistory>
     {
         List<SensorStateHistory> GetHourHistory(Guid clientId, int sensorId, DateTime from);
 
