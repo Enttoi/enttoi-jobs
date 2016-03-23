@@ -33,7 +33,7 @@ namespace Tests.SensorStateStats
         /// | Previous client history | Previous sensor history | List of clients history |  List of sensors history  | Expected result |
         /// +-------------------------+-------------------------+-------------------------+---------------------------+-----------------+
         /// | null                    | null                    | Online at **:10:00.000  | State 1 from **:10:00.000 | {               |
-        /// |                         |                         |                         |                           | "-1": 0         |
+        /// |                         |                         |                         |                           | "-1": 600000    |
         /// |                         |                         |                         |                           | "0": 0          |
         /// |                         |                         |                         |                           | "1": 3000000    |
         /// |                         |                         |                         |                           | }               |
@@ -65,7 +65,7 @@ namespace Tests.SensorStateStats
         /// | Previous client history | Previous sensor history | List of clients history |  List of sensors history  | Expected result |
         /// +-------------------------+-------------------------+-------------------------+---------------------------+-----------------+
         /// | null                    | null                    | Online at **:10:00.000  | State 1 from **:10:00.000 | {               |
-        /// |                         |                         | Offline at **:30:00.000 |                           | "-1": 600000    |
+        /// |                         |                         | Offline at **:30:00.000 |                           | "-1": 1200000   |
         /// |                         |                         | Online at **:40:00.000  |                           | "0": 0          |
         /// |                         |                         |                         |                           | "1": 2400000    |
         /// |                         |                         |                         |                           | }               |
@@ -99,7 +99,7 @@ namespace Tests.SensorStateStats
         /// | Previous client history | Previous sensor history | List of clients history |  List of sensors history  | Expected result |
         /// +-------------------------+-------------------------+-------------------------+---------------------------+-----------------+
         /// | null                    | null                    | Online at **:10:00.000  | State 1 from **:10:00.000 | {               |
-        /// |                         |                         |                         | State 0 from **:20:00.000 | "-1": 0         |
+        /// |                         |                         |                         | State 0 from **:20:00.000 | "-1": 600000    |
         /// |                         |                         |                         | State 1 from **:30:00.000 | "0": 1800000    |
         /// |                         |                         |                         | State 0 from **:40:00.000 | "1": 1200000    |
         /// |                         |                         |                         |                           | }               |
@@ -134,7 +134,7 @@ namespace Tests.SensorStateStats
         /// | Previous client history | Previous sensor history | List of clients history |  List of sensors history  | Expected result |
         /// +-------------------------+-------------------------+-------------------------+---------------------------+-----------------+
         /// | null                    | null                    | Online at **:10:00.000  | State 1 from **:10:00.000 | {               |
-        /// |                         |                         | Offline at **:30:00.000 | State 0 from **:20:00.000 | "-1": 1800000   |
+        /// |                         |                         | Offline at **:30:00.000 | State 0 from **:20:00.000 | "-1": 2400000   |
         /// |                         |                         |                         |                           | "0": 600000     |
         /// |                         |                         |                         |                           | "1": 600000     |
         /// |                         |                         |                         |                           | }               |
@@ -198,7 +198,7 @@ namespace Tests.SensorStateStats
         /// | Previous client history | Previous sensor history | List of clients history |  List of sensors history  | Expected result |
         /// +-------------------------+-------------------------+-------------------------+---------------------------+-----------------+
         /// | Offline                 | State 1                 | Empty                   | Empty                     | {               |
-        /// |                         |                         |                         |                           |   "-1": 360000  |
+        /// |                         |                         |                         |                           |   "-1": 3600000 |
         /// |                         |                         |                         |                           |   "0": 0        |
         /// |                         |                         |                         |                           |   "1": 0        |
         /// |                         |                         |                         |                           | }               |
