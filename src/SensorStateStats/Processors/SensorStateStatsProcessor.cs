@@ -88,7 +88,7 @@ namespace SensorStateStats.Processors
                         previousClientHistory = _clientsHistory.Get($"{metaClient.ClientId}", previousStats.ClientPreviousHistoryRecordRowKey);
                     SensorStateHistory previousSensorHistory = null;
                     if (previousStats != null && previousStats.SensorPreviousHistoryRecordRowKey != null)
-                        previousSensorHistory = _sensorsHistory.Get($"{metaClient.ClientId}-{metaSensor.sensorId}", previousStats.ClientPreviousHistoryRecordRowKey);
+                        previousSensorHistory = _sensorsHistory.Get($"{metaClient.ClientId}-{metaSensor.sensorId}", previousStats.SensorPreviousHistoryRecordRowKey);
 
                     // calculate statistics for the new stats record
                     var newStats = new StatsSensorState
