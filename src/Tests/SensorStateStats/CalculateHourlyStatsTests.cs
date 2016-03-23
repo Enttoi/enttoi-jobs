@@ -98,6 +98,77 @@ namespace Tests.SensorStateStats
         /// +-------------------------+-------------------------+-------------------------+---------------------------+-----------------+
         /// | Previous client history | Previous sensor history | List of clients history |  List of sensors history  | Expected result |
         /// +-------------------------+-------------------------+-------------------------+---------------------------+-----------------+
+        /// | null                    | null                    | Online at **:10:00.000  | State 0 from **:20:00.000 | {               |
+        /// |                         |                         | Offline at **:30:00.000 |                           | "-1": 1200000   |
+        /// |                         |                         | Online at **:40:00.000  |                           | "0": 30m          |
+        /// |                         |                         |                         |                           | "1": 0m    |
+        /// |                         |                         |                         |                           | }               |
+        /// +-------------------------+-------------------------+-------------------------+---------------------------+-----------------+
+        /// </summary>
+        [TestMethod]
+        public void FirstStatsRecord_22_Test()
+        {
+            // ### Arrange ####################
+            var clientsHistory = new List<ClientStateHistory>() {
+                generateClient(isOnline: true, minutesPortion: 10),
+                generateClient(isOnline: false, minutesPortion: 30),
+                generateClient(isOnline: true, minutesPortion: 40)
+            };
+            var sensorsHistory = new List<SensorStateHistory>() {
+                generateSensor(state: 0, minutesPortion: 20)
+            };
+
+            // ### Act ########################
+            var result = invokeCalculateHourlyStats(clientsHistory, sensorsHistory, null, null);
+
+            // ### Assert #####################
+            Assert.AreEqual(3, result.Count, "The number of returned state types is incorrect");
+            Assert.AreEqual(TimeSpan.FromMinutes(20).TotalMilliseconds, result[-1], "The 'offline' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(1 + 39).TotalMilliseconds, result[0], "The 'free' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(0).TotalMilliseconds, result[1], "The 'occupied' state duration is wrong");
+        }
+
+
+
+        /// <summary>
+        /// +-------------------------+-------------------------+-------------------------+---------------------------+-----------------+
+        /// | Previous client history | Previous sensor history | List of clients history |  List of sensors history  | Expected result |
+        /// +-------------------------+-------------------------+-------------------------+---------------------------+-----------------+
+        /// | null                    | null                    | Online at **:10:00.000  | State 1 from **:11:00.000 | {               |
+        /// |                         |                         | Offline at **:30:00.000 |                           | "-1": 1200000   |
+        /// |                         |                         | Online at **:40:00.000  |                           | "0": 1m          |
+        /// |                         |                         |                         |                           | "1": 39m    |
+        /// |                         |                         |                         |                           | }               |
+        /// +-------------------------+-------------------------+-------------------------+---------------------------+-----------------+
+        /// </summary>
+        [TestMethod]
+        public void FirstStatsRecord_21_Test()
+        {
+            // ### Arrange ####################
+            var clientsHistory = new List<ClientStateHistory>() {
+                generateClient(isOnline: true, minutesPortion: 10),
+                generateClient(isOnline: false, minutesPortion: 30),
+                generateClient(isOnline: true, minutesPortion: 40)
+            };
+            var sensorsHistory = new List<SensorStateHistory>() {
+                generateSensor(state: 1, minutesPortion: 11)
+            };
+
+            // ### Act ########################
+            var result = invokeCalculateHourlyStats(clientsHistory, sensorsHistory, null, null);
+
+            // ### Assert #####################
+            Assert.AreEqual(3, result.Count, "The number of returned state types is incorrect");
+            Assert.AreEqual(TimeSpan.FromMinutes(20).TotalMilliseconds, result[-1], "The 'offline' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(1).TotalMilliseconds, result[0], "The 'free' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(39).TotalMilliseconds, result[1], "The 'occupied' state duration is wrong");
+        }
+
+
+        /// <summary>
+        /// +-------------------------+-------------------------+-------------------------+---------------------------+-----------------+
+        /// | Previous client history | Previous sensor history | List of clients history |  List of sensors history  | Expected result |
+        /// +-------------------------+-------------------------+-------------------------+---------------------------+-----------------+
         /// | null                    | null                    | Online at **:10:00.000  | State 1 from **:10:00.000 | {               |
         /// |                         |                         |                         | State 0 from **:20:00.000 | "-1": 600000    |
         /// |                         |                         |                         | State 1 from **:30:00.000 | "0": 1800000    |
