@@ -1,12 +1,13 @@
 ﻿using SensorStateStats.Models;
 using System;
+using System.Threading.Tasks;
 
 namespace SensorStateStats.Storage
 {
-    interface IStatsCollection
+    public interface IStatsCollection
     {
         StatsSensorState GetLatestStatsRecord(Guid clientId, int sensorId);
 
-        void StoreHourlyStats(StatsSensorState statsRecord);
+        Task<bool> StoreHourlyStatsAsync(StatsSensorState statsRecord);
     }
 }

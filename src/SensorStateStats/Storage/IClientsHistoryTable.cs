@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace SensorStateStats.Storage
 {
-    interface IClientsHistoryTable : IStorageTable<ClientStateHistory>
+    public interface IClientsHistoryTable : IStorageTable<ClientStateHistory>
     {
         ClientStateHistory GetOldestHistoryRecord(Guid clientId);
 

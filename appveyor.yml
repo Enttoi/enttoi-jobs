@@ -9,7 +9,7 @@ build:
   project: src\EnttoiJobs.sln
   parallel: true
   verbosity: minimal
-test: off
+test: on
 artifacts:
 - path: src\ClientsState\bin\Release
   name: ClientsState

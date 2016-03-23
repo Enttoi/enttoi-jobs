@@ -32,7 +32,7 @@ namespace SensorStateStats
                     {
                         try
                         {
-                            recordsGenerated = scope.Resolve<SensorStateStatsProcessor>()
+                            recordsGenerated = await scope.Resolve<SensorStateStatsProcessor>()
                                 .GenerateHourlyStats(DateTime.UtcNow);
                         }
                         catch (Exception ex)

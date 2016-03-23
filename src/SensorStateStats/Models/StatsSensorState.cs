@@ -7,6 +7,9 @@ namespace SensorStateStats.Models
 {
     public class StatsSensorState
     {
+        [JsonProperty(PropertyName = "id")]
+        public string DocumentId { get; set; }
+
         [JsonProperty(PropertyName = "clientId")]
         public Guid ClientId { get; set; }
 
@@ -24,5 +27,10 @@ namespace SensorStateStats.Models
 
         [JsonProperty(PropertyName = "states")]
         public Dictionary<int, long> States { get; set; }
+
+        public StatsSensorState()
+        {
+            DocumentId = Guid.NewGuid().ToString("D");
+        }
     }
 }
