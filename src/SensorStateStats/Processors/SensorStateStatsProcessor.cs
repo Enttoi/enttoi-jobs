@@ -152,7 +152,13 @@ namespace SensorStateStats.Processors
         {
             IDictionary<ClientStateHistory, List<SensorStateHistory>> sensorStatesByClient = new SortedDictionary<ClientStateHistory, List<SensorStateHistory>>();
 
-            var result = new Dictionary<int, long>() { { -1, 0 }, { 0, 0 }, { 1, 0 } };
+            var result = new Dictionary<int, long>() { { (int)StatState.Offline, 0 }, { (int)StatState.Available, 0 }, { (int)StatState.Occupied, 0 } };
+
+            if (clientsHistory.Count == 0 && previousClientHistory == null)
+            {
+                result[(int)StatState.Offline] = ((long)TimeSpan.FromHours(1).TotalMilliseconds);
+                return result;
+            }
 
             //No Data on current hour, take previous stats and set for full hour 
             if (clientsHistory.Count == 0 && sensorsHistory.Count == 0)
@@ -192,8 +198,12 @@ namespace SensorStateStats.Processors
             foreach (var sensorHistRecord in sensorsHistory)
             {
                 //going backwards.
-                var key = sensorStatesByClient.Keys.OrderByDescending(c => c.StateChangedTimestamp).First(c => c.StateChangedTimestamp <= sensorHistRecord.StateChangedTimestamp);
-                sensorStatesByClient[key].Add(sensorHistRecord);
+                var key = sensorStatesByClient.Keys.OrderByDescending(c => c.StateChangedTimestamp).FirstOrDefault(c => c.StateChangedTimestamp <= sensorHistRecord.StateChangedTimestamp);
+                if (key != null)//otherwise we ignore.. we have sensorChangeState before first ever Client State change!!
+                {
+                    sensorStatesByClient[key].Add(sensorHistRecord);
+                }
+
             }
 
             //for each client set a dummy first sensor record (with time equal to  begining of the range..)
