@@ -201,7 +201,7 @@ namespace SensorStateStats.Processors
             {
                 if (client.Key.IsOnline)
                 {
-                    var closest = FindClosestSensorHistory(client.Key.StateChangedTimestamp, sensorsHistory) ?? previousSensorHistory;
+                    var closest = FindClosestSensorHistory(client.Key.StateChangedTimestamp, sensorsHistory) ?? previousSensorHistory ?? new SensorStateHistory() { State = (int)StatState.Available, StateChangedTimestamp = client.Key.StateChangedTimestamp };
                     if (!client.Value.Any() || client.Value.First().StateChangedTimestamp != client.Key.StateChangedTimestamp)
                     {
                         client.Value.Insert(0, new SensorStateHistory() { StateChangedTimestamp = client.Key.StateChangedTimestamp, State = closest.State });
