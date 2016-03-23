@@ -55,9 +55,9 @@ namespace Tests.SensorStateStats
 
             // ### Assert #####################
             Assert.AreEqual(3, result.Count, "The number of returned state types is incorrect");
-            Assert.AreEqual(0, result[-1], "The 'offline' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(10).TotalMilliseconds, result[-1], "The 'offline' state duration is wrong");
             Assert.AreEqual(0, result[0], "The 'free' state duration is wrong");
-            Assert.AreEqual(3000000, result[1], "The 'occupied' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(50).TotalMilliseconds, result[1], "The 'occupied' state duration is wrong");
         }
 
         /// <summary>
@@ -89,9 +89,9 @@ namespace Tests.SensorStateStats
 
             // ### Assert #####################
             Assert.AreEqual(3, result.Count, "The number of returned state types is incorrect");
-            Assert.AreEqual(600000, result[-1], "The 'offline' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(20).TotalMilliseconds, result[-1], "The 'offline' state duration is wrong");
             Assert.AreEqual(0, result[0], "The 'free' state duration is wrong");
-            Assert.AreEqual(2400000, result[1], "The 'occupied' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(40).TotalMilliseconds, result[1], "The 'occupied' state duration is wrong");
         }
 
         /// <summary>
@@ -124,9 +124,9 @@ namespace Tests.SensorStateStats
 
             // ### Assert #####################
             Assert.AreEqual(3, result.Count, "The number of returned state types is incorrect");
-            Assert.AreEqual(0, result[-1], "The 'offline' state duration is wrong");
-            Assert.AreEqual(1800000, result[0], "The 'free' state duration is wrong");
-            Assert.AreEqual(1200000, result[1], "The 'occupied' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(10).TotalMilliseconds, result[-1], "The 'offline' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(30).TotalMilliseconds, result[0], "The 'free' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(20).TotalMilliseconds, result[1], "The 'occupied' state duration is wrong");
         }
 
         /// <summary>
@@ -158,7 +158,7 @@ namespace Tests.SensorStateStats
 
             // ### Assert #####################
             Assert.AreEqual(3, result.Count, "The number of returned state types is incorrect");
-            Assert.AreEqual(1800000, result[-1], "The 'offline' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(40).TotalMilliseconds, result[-1], "The 'offline' state duration is wrong");
             Assert.AreEqual(600000, result[0], "The 'free' state duration is wrong");
             Assert.AreEqual(600000, result[1], "The 'occupied' state duration is wrong");
         }
@@ -218,7 +218,7 @@ namespace Tests.SensorStateStats
 
             // ### Assert #####################
             Assert.AreEqual(3, result.Count, "The number of returned state types is incorrect");
-            Assert.AreEqual(360000, result[-1], "The 'offline' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(60).TotalMilliseconds, result[-1], "The 'offline' state duration is wrong");
             Assert.AreEqual(0, result[0], "The 'free' state duration is wrong");
             Assert.AreEqual(0, result[1], "The 'occupied' state duration is wrong");
         }
@@ -559,9 +559,9 @@ namespace Tests.SensorStateStats
 
             // ### Assert #####################
             Assert.AreEqual(3, result.Count, "The number of returned state types is incorrect");
-            Assert.AreEqual(600000, result[-1], "The 'offline' state duration is wrong");
-            Assert.AreEqual(1800000, result[0], "The 'free' state duration is wrong");
-            Assert.AreEqual(1200000, result[1], "The 'occupied' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(10).TotalMilliseconds, result[-1], "The 'offline' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(30).TotalMilliseconds, result[0], "The 'free' state duration is wrong");
+            Assert.AreEqual(TimeSpan.FromMinutes(20).TotalMilliseconds, result[1], "The 'occupied' state duration is wrong");
         }
 
         /// <summary>

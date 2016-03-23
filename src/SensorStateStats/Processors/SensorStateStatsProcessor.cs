@@ -12,6 +12,14 @@ namespace SensorStateStats.Processors
 {
     public class SensorStateStatsProcessor
     {
+        private enum StatState
+        {
+            Offline = -1,
+            Available = 0,
+            Occupied = 1
+
+        }
+
         private ILogger _logger;
         private IClientsCollection _clientsCollection;
         private IStatsCollection _statsCollection;
@@ -95,7 +103,7 @@ namespace SensorStateStats.Processors
                     newStats.ClientPreviousHistoryRecordRowKey = clientsHistoryRecords.LastOrDefault()?.RowKey ?? previousStats?.ClientPreviousHistoryRecordRowKey;
                     newStats.SensorPreviousHistoryRecordRowKey = sensorsHistoryRecords.LastOrDefault()?.RowKey ?? previousStats?.SensorPreviousHistoryRecordRowKey;
 
-                    if(await _statsCollection.StoreHourlyStatsAsync(newStats))
+                    if (await _statsCollection.StoreHourlyStatsAsync(newStats))
                         recordsGenerated++;
                 }
             }
@@ -137,40 +145,142 @@ namespace SensorStateStats.Processors
         /// <param name="previousSensorHistory">The most recent sensor state change prior to the hour we calculating for (can be null).</param>
         /// <returns>Dictionary where is the key is a state and the value is for how long in ms the sensor stayed in this state</returns>
         private Dictionary<int, long> calculateHourlyStats(
-                    List<ClientStateHistory> clientsHistory,
-                    List<SensorStateHistory> sensorsHistory,
-                    ClientStateHistory previousClientHistory,
-                    SensorStateHistory previousSensorHistory)
+            List<ClientStateHistory> clientsHistory,
+            List<SensorStateHistory> sensorsHistory,
+            ClientStateHistory previousClientHistory,
+            SensorStateHistory previousSensorHistory)
         {
+            IDictionary<ClientStateHistory, List<SensorStateHistory>> sensorStatesByClient = new SortedDictionary<ClientStateHistory, List<SensorStateHistory>>();
+
             var result = new Dictionary<int, long>() { { -1, 0 }, { 0, 0 }, { 1, 0 } };
+
+            //No Data on current hour, take previous stats and set for full hour 
+            if (clientsHistory.Count == 0 && sensorsHistory.Count == 0)
+            {
+                if (previousClientHistory == null || previousClientHistory.IsOnline == false)
+                {
+                    result[-1] = ((long)TimeSpan.FromHours(1).TotalMilliseconds);
+                }
+
+                if (previousClientHistory != null && previousClientHistory.IsOnline && previousSensorHistory != null)
+                {
+                    result[previousSensorHistory.State] = ((long)TimeSpan.FromHours(1).TotalMilliseconds);
+                }
+                return result;
+            }
+
+            //Set previous and set to beginging of current hour
+            if (previousClientHistory != null)
+            {
+                previousClientHistory.StateChangedTimestamp = getStartingHour(clientsHistory, sensorsHistory);
+                sensorStatesByClient.Add(previousClientHistory, new List<SensorStateHistory>());
+
+                if (previousSensorHistory != null)
+                {
+                    previousSensorHistory.StateChangedTimestamp = previousClientHistory.StateChangedTimestamp;
+                    sensorStatesByClient[previousClientHistory].Add(previousSensorHistory);
+                }
+            }
+
+            //clients list to dictionary keys
+            foreach (var clientHistoryRecord in clientsHistory)
+            {
+                sensorStatesByClient.Add(clientHistoryRecord, new List<SensorStateHistory>());
+            }
+
+            //triage sensors to relevant client records
+            foreach (var sensorHistRecord in sensorsHistory)
+            {
+                //going backwards.
+                var key = sensorStatesByClient.Keys.OrderByDescending(c => c.StateChangedTimestamp).First(c => c.StateChangedTimestamp <= sensorHistRecord.StateChangedTimestamp);
+                sensorStatesByClient[key].Add(sensorHistRecord);
+            }
+
+            //for each client set a dummy first sensor record (with time equal to  begining of the range..)
+            foreach (var client in sensorStatesByClient)
+            {
+                if (client.Key.IsOnline)
+                {
+                    var closest = FindClosestSensorHistory(client.Key.StateChangedTimestamp, sensorsHistory) ?? previousSensorHistory;
+                    if (!client.Value.Any() || client.Value.First().StateChangedTimestamp != client.Key.StateChangedTimestamp)
+                    {
+                        client.Value.Insert(0, new SensorStateHistory() { StateChangedTimestamp = client.Key.StateChangedTimestamp, State = closest.State });
+                    }
+                }
+            }
+
+            //calc offline
+            var orderedKeys = sensorStatesByClient.Keys.OrderBy(c => c.StateChangedTimestamp);
+            DateTime from = orderedKeys.First().StateChangedTimestamp.ToRoundHourBottom();
+
+            foreach (var key in orderedKeys)
+            {
+                if (key.IsOnline == true)
+                {
+                    result[-1] += ((long)(key.StateChangedTimestamp - from).TotalMilliseconds);
+                }
+                from = key.StateChangedTimestamp;
+            }
+            //add the rest
+            if (!orderedKeys.Last().IsOnline)
+            {
+                result[-1] += orderedKeys.Last().StateChangedTimestamp.MsTillTheEndOfHour();
+            }
+
+
+            //calc available/occupied for each online range
+            DateTime to = orderedKeys.First().StateChangedTimestamp.ToRoundHourUpper();
+
+            foreach (var key in orderedKeys.Reverse())
+            {
+                if (key.IsOnline == true)
+                {
+                    for (int i = sensorStatesByClient[key].Count - 1; i >= 0; i--)
+                    {
+                        var sensorState = sensorStatesByClient[key][i];
+                        result[sensorState.State] += ((long)(to - sensorStatesByClient[key][i].StateChangedTimestamp).TotalMilliseconds);
+                        to = sensorState.StateChangedTimestamp;
+                    }
+                }
+                to = key.StateChangedTimestamp;
+            }
+
             return result;
-            //if (previousStats != null)
-            //{
-            //    memorizedClientPortion = _clientsHistory.Get($"{stats.ClientId}", previousStats.ClientPreviousHistoryRecordRowKey);
-            //    memorizedPortion = _sensorsHistory.Get($"{stats.ClientId}-{stats.SensorId}", previousStats.ClientPreviousHistoryRecordRowKey);
 
 
+        }
 
-            //}
-            //else
-            //{
-            //    // first ever record => there is at least one history record for sensor
-            //    if (sensorsHistory.Count > 1) 
-            //    {
-            //        SensorStateHistory memorizedSensorPortion = sensorsHistory[0];
-            //        for (int i = 1; i < sensorsHistory.Count; i++)
-            //        {
-            //            var clientStates = clientsHistory
-            //                .Where(h => h.StateChangedTimestamp > memorizedSensorPortion.StateChangedTimestamp && h.StateChangedTimestamp < sensorsHistory[i].StateChangedTimestamp);
+        private DateTime getStartingHour(List<ClientStateHistory> clientsHistory, List<SensorStateHistory> sensorsHistory)
+        {
+            if (clientsHistory.Count > 0)
+            {
+                return clientsHistory.First().StateChangedTimestamp.ToRoundHourBottom();
+            }
+            if (sensorsHistory.Count > 0)
+            {
+                return sensorsHistory.First().StateChangedTimestamp.ToRoundHourBottom();
+            }
+            throw new Exception("!!");
+        }
 
 
-
-            //            stats.States[memorizedSensorPortion.State] += (long)(sensorsHistory[i].StateChangedTimestamp - memorizedSensorPortion.StateChangedTimestamp).TotalMilliseconds;
-            //            memorizedSensorPortion = sensorsHistory[i];
-            //        }
-            //    }
-            //    stats.States[sensorsHistory.Last().State] += sensorsHistory.Last().StateChangedTimestamp.MsTillTheEndOfHour();
-            //}
+        /// <summary>
+        /// Finding closestSensorStateHistory record in list below a reference date
+        /// </summary>
+        /// <param name="reference"></param>
+        /// <param name="sensorsHistory"></param>
+        /// <returns></returns>
+        private SensorStateHistory FindClosestSensorHistory(DateTime reference, List<SensorStateHistory> sensorsHistory)
+        {
+            for (int i = sensorsHistory.Count - 1; i >= 0; i--)
+            {
+                if (sensorsHistory[i].StateChangedTimestamp <= reference)
+                {
+                    return sensorsHistory[i];
+                }
+            }
+            return null;
         }
     }
+
 }
